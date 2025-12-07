@@ -180,6 +180,17 @@
 		}
 		return out;
 	}
+	function mergeProps() {
+		var target = {};
+		for (var i = 0; i < arguments.length; i++) {
+			var source = arguments[i];
+			if (!source || typeof source !== "object") continue;
+			for (var key in source) {
+				target[key] = source[key];
+			}
+		}
+		return target;
+	}
 	function warnOnce(category, message) {
 		if ("development" === "production") return;
 		throw new Error(message);
@@ -259,6 +270,18 @@
 				return key.toLowerCase();
 		}
 	}
+	function assertStyleObject(value, nodeName) {
+		if ("development" === "production") return;
+		if (!value || typeof value !== "object") {
+			throw new Error("[Moon] Style on <" + nodeName + "> must be an object, received " + typeof value + ".");
+		}
+	}
+	function assertEventHandler(value, key, nodeName) {
+		if ("development" === "production") return;
+		if (typeof value !== "function") {
+			throw new Error("[Moon] Event handler " + key + " on <" + nodeName + "> must be a function.");
+		}
+	}
 
 	/**
 	 * Modify the prototype of a node to include special Moon view properties.
@@ -287,6 +310,7 @@
 				var value = nodeData[key];
 				if (key[0] === "o" && key[1] === "n") {
 					// Set an event listener.
+					assertEventHandler(value, key, nodeName);
 					element[normalizeEventKey(key)] = value;
 				} else {
 					switch (key) {
@@ -301,6 +325,7 @@
 						case "style":
 							{
 								// Set style properties.
+								assertStyleObject(value, nodeName);
 								var elementStyle = element.style;
 								normalizeStyleInline(value);
 								for (var _valueKey in value) {
@@ -386,6 +411,7 @@
 			if (valueOld !== valueNew) {
 				if (keyNew[0] === "o" && keyNew[1] === "n") {
 					// Update an event.
+					assertEventHandler(valueNew, keyNew, nodeOld.name);
 					nodeOldElement[normalizeEventKey(keyNew)] = valueNew;
 				} else {
 					switch (keyNew) {
@@ -418,6 +444,7 @@
 							{
 								// Update style properties.
 								var nodeOldElementStyle = nodeOldElement.style;
+								assertStyleObject(valueNew, nodeOld.name);
 								normalizeStyleInline(valueNew);
 								if (valueOld) normalizeStyleInline(valueOld);
 								if (valueOld === undefined) {
@@ -718,7 +745,8 @@
 		components: components,
 		mount: mount,
 		normalizeChildren: normalizeChildren,
-		cls: cls
+		cls: cls,
+		mergeProps: mergeProps
 	};
 
 	/**
