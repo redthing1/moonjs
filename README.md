@@ -18,14 +18,25 @@
 
 ## Browser-only usage (single file)
 
-- Build once: `npm run build`, then vendor `packages/moon-web/dist/moon-web.min.js` into your project.
-- Include it with a plain script tag; it exposes a global `Moon` and compiles `<script type="text/moon">` inline.
-- Use `Moon.view.mount(element)` once to bind to a root, and set `Moon.m.view = (<div>…</div>)` to render. Handlers can be named functions or inline arrows (e.g., `onClick={() => ...}`) now that the compiler unwraps `{}` in attribute values.
-- If you prefer smaller pieces, use `packages/moon/dist/moon.min.js` alone, or add `packages/moon-browser/dist/moon-browser.min.js` for inline Moon scripts.
+- Build once: `npm run build`, then vendor `packages/moon-web/dist/moon-web.min.js` into your project. That one file is all you need for offline/browser-only usage.
+- Include it with a plain script tag; it exposes a global `Moon` and compiles `<script type="text/moon">` inline (works over `file://`).
+- Mount once: `Moon.view.mount(element)` binds a root. Render with `Moon.m.view = (<div>…</div>)`; handlers can be inline arrows or named functions.
+- If you want smaller pieces: `packages/moon/dist/moon.min.js` (runtime only) or `packages/moon-browser/dist/moon-browser.min.js` (runtime + inline compiler).
+- To sanity check the bundle offline: run `npm run build`, open `examples/moon-web-dashboard.html` directly from disk, and confirm the sample workspace renders and responds (tabs, filters, add/toggle/remove, priority bump). No CDN, no npm installs needed at runtime.
+
+### Browser bundle workflow (no CDN, no npm at runtime)
+
+1. Install deps once: `npm install`.
+2. Test locally: `npm test -- --runInBand` (optional).
+3. Build: `npm run build` (outputs `packages/moon-web/dist/moon-web.min.js`).
+4. Vendor that single file into your project and reference it with `<script src="/path/to/moon-web.min.js"></script>`.
+5. Author views in plain HTML using `<script type="text/moon">…</script>`; open the page directly via `file://` or any static server.
+6. Examples: `examples/moon-web.html` (counter) and `examples/moon-web-dashboard.html` (tabs/search/filter/add/toggle/remove/priority) run offline once the bundle is vendored.
 
 ### JSX-ish language notes
 
-- Attributes: `className`/`htmlFor` normalize to `class`/`for`.
+- Attributes: `className`/`htmlFor` normalize to `class`/`for`; `dangerouslySetInnerHTML` maps to `innerHTML`.
+- Hyphenated attributes (`aria-label`, `data-foo`) now pass through without hacks.
 - Booleans: shorthand works (`disabled`, `autoFocus`, etc.).
 - Handlers: JSX-style handlers (`onClick={() => ...}`) compile as expected.
 - Spreads: `{...props}` is merged with explicit props via `Object.assign`.
@@ -33,7 +44,9 @@
 - Escape hatch: `innerHTML` is supported (use sparingly).
 - Event aliases: `onChange` maps to `oninput`, `onDoubleClick` maps to `ondblclick`.
 - Errors: compiler reports line/column with a caret to pinpoint parse issues.
-- Not yet: fragments (`<>…</>`) are still TODO.
+- Fragments: `<>…</>` flatten into children.
+- Object literals: attribute values like `style={color: "red"}` stay object literals.
+- Children normalization: `{expr}` inside children can be a string/number, a node, or an array of nodes; everything is flattened via `Moon.view.normalizeChildren` so arrays from `map` render as expected and falsy values disappear.
 
 ### Minimal examples
 

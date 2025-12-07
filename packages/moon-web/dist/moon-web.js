@@ -121,9 +121,46 @@
 		_loop();
 	}
 
+	/**
+	 * Normalize arbitrary child values into an array of Moon view nodes.
+	 *
+	 * - Strings/numbers/bigints become text nodes.
+	 * - Arrays are flattened recursively.
+	 * - Existing view nodes are passed through.
+	 * - Null/undefined/booleans are ignored.
+	 */
+	function normalizeChildren(value) {
+		if (value === null || value === undefined || typeof value === "boolean") {
+			return [];
+		}
+		if (Array.isArray(value)) {
+			var normalized = [];
+			for (var i = 0; i < value.length; i++) {
+				var children = normalizeChildren(value[i]);
+				for (var j = 0; j < children.length; j++) {
+					normalized.push(children[j]);
+				}
+			}
+			return normalized;
+		}
+		var valueType = typeof value;
+		if (valueType === "string" || valueType === "number" || valueType === "bigint") {
+			return [components.text({
+				data: String(value)
+			})];
+		}
+		if (value && value.name !== undefined) {
+			return [value];
+		}
+		return [components.text({
+			data: String(value)
+		})];
+	}
+
 	var view = {
 		components: components,
-		mount: mount
+		mount: mount,
+		normalizeChildren: normalizeChildren
 	};
 
 	/**
@@ -686,7 +723,7 @@
 	/**
 	 * Matches an identifier character.
 	 */
-	var identifierRE = /[$\w.]/;
+	var identifierRE = /[-$\w.]/;
 
 	/**
 	 * Stores an error message, a slice of tokens associated with the error, and a
@@ -874,6 +911,9 @@
 			return parser.type("attributes", parser.many(parser.sequence([grammar.value, parser.optional(parser.sequence([parser.character("="), grammar.value])), grammar.separator])))(input, index);
 		},
 		text: parser.type("text", parser.many1(parser.or(parser.and(parser.character("\\"), parser.any), parser.not(["{", "<"])))),
+		fragment: function fragment(input, index) {
+			return parser.type("fragment", parser.sequence([parser.string("<>"), parser.many(parser.alternates([parser["try"](grammar.node), parser["try"](grammar.nodeData), parser["try"](grammar.nodeDataChildren), parser["try"](grammar.fragment), grammar.text, grammar.interpolation])), parser.string("</>")]))(input, index);
+		},
 		interpolation: function interpolation(input, index) {
 			return parser.type("interpolation", parser.sequence([parser.character("{"), grammar.expression, parser.character("}")]))(input, index);
 		},
@@ -884,7 +924,7 @@
 			return parser.type("nodeData", parser.sequence([parser.character("<"), grammar.separator, grammar.value, grammar.separator, parser.or(parser["try"](grammar.attributes), grammar.value), parser.string("/>")]))(input, index);
 		},
 		nodeDataChildren: function nodeDataChildren(input, index) {
-			return parser.type("nodeDataChildren", parser.sequence([parser.character("<"), grammar.separator, grammar.value, grammar.separator, grammar.attributes, parser.character(">"), parser.many(parser.alternates([parser["try"](grammar.node), parser["try"](grammar.nodeData), parser["try"](grammar.nodeDataChildren), grammar.text, grammar.interpolation])), parser.string("</"), parser.many(parser.not([">"])), parser.character(">")]))(input, index);
+			return parser.type("nodeDataChildren", parser.sequence([parser.character("<"), grammar.separator, grammar.value, grammar.separator, grammar.attributes, parser.character(">"), parser.many(parser.alternates([parser["try"](grammar.node), parser["try"](grammar.nodeData), parser["try"](grammar.nodeDataChildren), parser["try"](grammar.fragment), grammar.text, grammar.interpolation])), parser.string("</"), parser.many(parser.not([">"])), parser.character(">")]))(input, index);
 		},
 		expression: function expression(input, index) {
 			return parser.many(parser.alternates([
@@ -893,7 +933,7 @@
 			// Multi-line comment
 			parser.sequence([parser.string("/*"), parser.many(parser.not(["*/"])), parser.string("*/")]),
 			// Regular expression
-			parser["try"](parser.sequence([parser.character("/"), parser.many1(parser.or(parser.and(parser.character("\\"), parser.not(["\n"])), parser.not(["/", "\n"]))), parser.character("/")])), grammar.comment, grammar.value, parser["try"](grammar.node), parser["try"](grammar.nodeData), parser["try"](grammar.nodeDataChildren),
+			parser["try"](parser.sequence([parser.character("/"), parser.many1(parser.or(parser.and(parser.character("\\"), parser.not(["\n"])), parser.not(["/", "\n"]))), parser.character("/")])), grammar.comment, grammar.value, parser["try"](grammar.node), parser["try"](grammar.nodeData), parser["try"](grammar.nodeDataChildren), parser["try"](grammar.fragment),
 			// Allow failed regular expression or view parses to be interpreted as
 			// operators.
 			parser.character("/"), parser.character("<"),
@@ -951,7 +991,97 @@
 		if (name === "htmlFor") return "for";
 		if (name === "onChange") return "oninput";
 		if (name === "onDoubleClick") return "ondblclick";
+		if (name === "dangerouslySetInnerHTML") return "innerHTML";
 		return name;
+	}
+	function attributesToDataExpression(attributes) {
+		if (!attributes || attributes.length !== 1) {
+			return null;
+		}
+		var attr = attributes[0];
+		var nameNode = attr[0];
+		var valueMaybe = attr[1];
+		var nameGenerated = generate(nameNode);
+		if (valueMaybe === null && (nameGenerated[0] === "{" || nameGenerated[0] === "(" || nameGenerated[0] === "[")) {
+			if (nameGenerated.slice(0, 4) === "{...") {
+				return null;
+			}
+			return generate(unwrapBraces(nameNode));
+		}
+		return null;
+	}
+
+	/**
+	 * Heuristically determine if a braced value is an object literal (and not a ternary).
+	 *
+	 * @param {any} valueNode
+	 * @returns {boolean}
+	 */
+	function isLikelyObjectLiteral(valueNode) {
+		if (!(Array.isArray(valueNode) && valueNode[0] === "{" && valueNode[valueNode.length - 1] === "}")) {
+			return false;
+		}
+		var inner = valueNode[1];
+		if (!Array.isArray(inner)) {
+			return false;
+		}
+		var hasColon = false;
+		var hasQuestion = false;
+		for (var i = 0; i < inner.length; i++) {
+			var part = inner[i];
+			if (part === "?") {
+				hasQuestion = true;
+			} else if (Array.isArray(part)) {
+				for (var j = 0; j < part.length; j++) {
+					var piece = part[j];
+					if (piece === "?") hasQuestion = true;
+					if (piece === ":") hasColon = true;
+				}
+			} else if (typeof part === "string") {
+				if (part.indexOf("?") !== -1) hasQuestion = true;
+				if (part.indexOf(":") !== -1) hasColon = true;
+			}
+		}
+		return hasColon && !hasQuestion;
+	}
+
+	/**
+	 * Generates child output for a list of nodes, flattening fragments inline.
+	 *
+	 * @param {Array} children
+	 * @param {string} separator
+	 * @returns {{output: string, separator: string}}
+	 */
+	function generateChildList(children) {
+		var separator = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : "";
+		var output = "";
+		var currentSeparator = separator;
+		for (var i = 0; i < children.length; i++) {
+			var child = children[i];
+			if (child.type === "text") {
+				var childGenerated = generate(child);
+				if (childGenerated.isWhitespace) {
+					output += childGenerated.output;
+				} else {
+					output += currentSeparator + childGenerated.output;
+					currentSeparator = ",";
+				}
+			} else if (child.type === "fragment") {
+				var fragmentChildren = generateChildList(child.value[1], currentSeparator);
+				output += fragmentChildren.output;
+				currentSeparator = fragmentChildren.separator;
+			} else if (child.type === "interpolation") {
+				output += currentSeparator + "...Moon.view.normalizeChildren(" + generate(child.value[1]) + ")";
+				currentSeparator = ",";
+			} else {
+				output += currentSeparator + generate(child);
+				currentSeparator = ",";
+			}
+		}
+		return {
+			output: output,
+			separator: currentSeparator
+		};
 	}
 
 	/**
@@ -996,11 +1126,13 @@
 				var rawName = generate(unwrapBraces(pair[0]));
 				var attributeName = normalizeAttributeName(rawName);
 				var pairValue = pair[1];
+				var valueNode = Array.isArray(pairValue) && pairValue[0] === "=" ? pairValue[1] : pairValue;
+				var isObjectLiteral = valueNode && isLikelyObjectLiteral(valueNode);
 				if (attributeName.slice(0, 3) === "...") {
-					var spreadExpr = attributeName.slice(3) || generate(unwrapBraces(pairValue && pairValue[1] || []));
+					var spreadExpr = attributeName.slice(3) || generate(unwrapBraces(valueNode || []));
 					spreads.push(spreadExpr);
 				} else {
-					var attributeValue = pairValue === null ? "true" : generate(unwrapBraces(pairValue[1]));
+					var attributeValue = pairValue === null ? "true" : isObjectLiteral ? "{" + generate(valueNode[1]) + "}" : generate(unwrapBraces(valueNode));
 					entries.push("\"" + attributeName + "\":" + attributeValue);
 				}
 			}
@@ -1041,6 +1173,12 @@
 			// expression or an object using attribute syntax.
 			var _value2 = tree.value;
 			var data = _value2[4];
+			if (data.type === "attributes") {
+				var dataExpr = attributesToDataExpression(data.value);
+				if (dataExpr !== null) {
+					return "" + generate(_value2[1]) + generateName(_value2[2]) + generate(_value2[3]) + "(" + dataExpr + ")";
+				}
+			}
 			var dataGenerated = generate(data);
 			return "" + generate(_value2[1]) + generateName(_value2[2]) + generate(_value2[3]) + "(" + (data.type === "attributes" ? dataGenerated.isExpression ? dataGenerated.output : "{" + dataGenerated.output + "}" : dataGenerated) + ")";
 		} else if (type === "nodeDataChildren") {
@@ -1049,32 +1187,22 @@
 			var _value3 = tree.value;
 			var _data = generate(_value3[4]);
 			var children = _value3[6];
-			var childrenLength = children.length;
-			var childrenGenerated;
-			if (childrenLength === 0) {
-				childrenGenerated = "";
+			var hasChildren = children.length > 0;
+			var childList = hasChildren ? generateChildList(children) : {
+				output: ""
+			};
+			var propsExpression;
+			if (_data.isExpression) {
+				propsExpression = hasChildren ? "Object.assign({}, " + _data.output + ", {children:[" + childList.output + "]})" : _data.output;
 			} else {
-				var separator = "";
-				var dataSeparator = _data.separator || "";
-				childrenGenerated = dataSeparator + "children:[";
-				for (var _i2 = 0; _i2 < childrenLength; _i2++) {
-					var child = children[_i2];
-					var childGenerated = generate(child);
-					if (child.type === "text") {
-						if (childGenerated.isWhitespace) {
-							childrenGenerated += childGenerated.output;
-						} else {
-							childrenGenerated += separator + childGenerated.output;
-							separator = ",";
-						}
-					} else {
-						childrenGenerated += separator + childGenerated;
-						separator = ",";
-					}
-				}
-				childrenGenerated += "]";
+				var childrenGenerated = hasChildren ? (_data.separator || "") + "children:[" + childList.output + "]" : "";
+				propsExpression = "{" + _data.output + childrenGenerated + "}";
 			}
-			return "" + generate(_value3[1]) + generateName(_value3[2]) + generate(_value3[3]) + "({" + _data.output + childrenGenerated + "})";
+			return "" + generate(_value3[1]) + generateName(_value3[2]) + generate(_value3[3]) + "(" + propsExpression + ")";
+		} else if (type === "fragment") {
+			var _children = tree.value[1];
+			var fragmentChildren = generateChildList(_children);
+			return "[" + fragmentChildren.output + "]";
 		}
 	}
 

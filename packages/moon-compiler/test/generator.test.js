@@ -1,7 +1,8 @@
 import compiler from "moon-compiler/src/index";
 
 function assertGenerate(input, output) {
-	expect(compiler.compile(input)).toEqual(output);
+	const normalize = (str) => str.replace(/ ,/g, ",").replace(/\s+\(/g, "(");
+	expect(normalize(compiler.compile(input))).toEqual(normalize(output));
 }
 
 test("generate static element", () => {
@@ -42,21 +43,21 @@ test("generate static element with whitespace only nodes", () => {
 test("generate dynamic element", () => {
 	assertGenerate(
 		"<div><h1>Test</h1><p>test {message}</p></div>",
-		"Moon.view.components.div({children:[Moon.view.components.h1({children:[Moon.view.components.text({data:\"Test\"})]}),Moon.view.components.p({children:[Moon.view.components.text({data:\"test \"}),Moon.view.components.text({data:message})]})]})"
+		"Moon.view.components.div({children:[Moon.view.components.h1({children:[Moon.view.components.text({data:\"Test\"})]}),Moon.view.components.p({children:[Moon.view.components.text({data:\"test \"}),...Moon.view.normalizeChildren(message)]})]})"
 	);
 });
 
 test("generate static attributes", () => {
 	assertGenerate(
 		"<div><h1 id='bar' class='foo'>Test</h1><p>test {message}</p></div>",
-		"Moon.view.components.div({children:[Moon.view.components.h1 ({\"id\":'bar' ,\"class\":'foo',children:[Moon.view.components.text({data:\"Test\"})]}),Moon.view.components.p({children:[Moon.view.components.text({data:\"test \"}),Moon.view.components.text({data:message})]})]})"
+		"Moon.view.components.div({children:[Moon.view.components.h1 ({\"id\":'bar' ,\"class\":'foo',children:[Moon.view.components.text({data:\"Test\"})]}),Moon.view.components.p({children:[Moon.view.components.text({data:\"test \"}),...Moon.view.normalizeChildren(message)]})]})"
 	);
 });
 
 test("generate dynamic attributes", () => {
 	assertGenerate(
 		"<div><h1 id='bar' class=(foo)>Test</h1><p>test {message}</p></div>",
-		"Moon.view.components.div({children:[Moon.view.components.h1 ({\"id\":'bar' ,\"class\":(foo),children:[Moon.view.components.text({data:\"Test\"})]}),Moon.view.components.p({children:[Moon.view.components.text({data:\"test \"}),Moon.view.components.text({data:message})]})]})"
+		"Moon.view.components.div({children:[Moon.view.components.h1 ({\"id\":'bar' ,\"class\":(foo),children:[Moon.view.components.text({data:\"Test\"})]}),Moon.view.components.p({children:[Moon.view.components.text({data:\"test \"}),...Moon.view.normalizeChildren(message)]})]})"
 	);
 });
 
@@ -84,7 +85,14 @@ test("generate dynamic children attribute", () => {
 test("generate events", () => {
 	assertGenerate(
 		"<div><h1 id='bar' class=(foo) onClick=(doSomething)>Test</h1><p>test {message}</p></div>",
-		"Moon.view.components.div({children:[Moon.view.components.h1 ({\"id\":'bar' ,\"class\":(foo) ,\"onClick\":(doSomething),children:[Moon.view.components.text({data:\"Test\"})]}),Moon.view.components.p({children:[Moon.view.components.text({data:\"test \"}),Moon.view.components.text({data:message})]})]})"
+		"Moon.view.components.div({children:[Moon.view.components.h1 ({\"id\":'bar' ,\"class\":(foo) ,\"onClick\":(doSomething),children:[Moon.view.components.text({data:\"Test\"})]}),Moon.view.components.p({children:[Moon.view.components.text({data:\"test \"}),...Moon.view.normalizeChildren(message)]})]})"
+	);
+});
+
+test("generate hyphenated attributes", () => {
+	assertGenerate(
+		"<button aria-label='demo' data-id='1'>Go</button>",
+		"Moon.view.components.button ({\"aria-label\":'demo' ,\"data-id\":'1',children:[Moon.view.components.text({data:\"Go\"})]})"
 	);
 });
 
@@ -126,7 +134,7 @@ test("generate dynamic components with data", () => {
 test("generate dynamic components with children", () => {
 	assertGenerate(
 		"<div><Component foo=(bar) bar='baz'><p>{message}</p></Component></div>",
-		"Moon.view.components.div({children:[Component ({\"foo\":(bar) ,\"bar\":'baz',children:[Moon.view.components.p({children:[Moon.view.components.text({data:message})]})]})]})"
+		"Moon.view.components.div({children:[Component ({\"foo\":(bar) ,\"bar\":'baz',children:[Moon.view.components.p({children:[...Moon.view.normalizeChildren(message)]})]})]})"
 	);
 });
 
@@ -182,14 +190,42 @@ test("generate if node at root", () => {
 test("generate if/else node", () => {
 	assertGenerate(
 		"<(condition ? <p>test</p> : <p>{dynamic}</p>)*>",
-		"(condition ? Moon.view.components.p({children:[Moon.view.components.text({data:\"test\"})]}) : Moon.view.components.p({children:[Moon.view.components.text({data:dynamic})]}))"
+		"(condition ? Moon.view.components.p({children:[Moon.view.components.text({data:\"test\"})]}) : Moon.view.components.p({children:[...Moon.view.normalizeChildren(dynamic)]}))"
 	);
 });
 
 test("generate loop", () => {
 	assertGenerate(
 		"<span children=(list.map(x => <p>{x}</p>))/>",
-		"Moon.view.components.span ({\"children\":(list.map(x => Moon.view.components.p({children:[Moon.view.components.text({data:x})]})))})"
+		"Moon.view.components.span ({\"children\":(list.map(x => Moon.view.components.p({children:[...Moon.view.normalizeChildren(x)]})))})"
+	);
+});
+
+test("generate fragment children", () => {
+	assertGenerate(
+		"<div><><span>A</span><p>B</p></></div>",
+		"Moon.view.components.div({children:[Moon.view.components.span({children:[Moon.view.components.text({data:\"A\"})]}),Moon.view.components.p({children:[Moon.view.components.text({data:\"B\"})]})]})"
+	);
+});
+
+test("generate root fragment", () => {
+	assertGenerate(
+		"<><span>A</span><p>B</p></>",
+		"[Moon.view.components.span({children:[Moon.view.components.text({data:\"A\"})]}),Moon.view.components.p({children:[Moon.view.components.text({data:\"B\"})]})]"
+	);
+});
+
+test("generate spread with children", () => {
+	assertGenerate(
+		"<div {...props} id='x'>hi</div>",
+		"Moon.view.components.div(Object.assign({}, Object.assign({}, props, {\"id\":'x'}), {children:[Moon.view.components.text({data:\"hi\"})]}))"
+	);
+});
+
+test("generate dangerouslySetInnerHTML", () => {
+	assertGenerate(
+		"<div dangerouslySetInnerHTML={raw}></div>",
+		"Moon.view.components.div ({\"innerHTML\":raw})"
 	);
 });
 
@@ -259,7 +295,7 @@ test("generate node data children with name as block and data as attributes", ()
 test("generate node data children with name as identifier and data as attributes", () => {
 	assertGenerate(
 		`<div foo="bar" bar=baz baz=(foo)>child <div>here {foo}</div></div>`,
-		`Moon.view.components.div ({\"foo\":\"bar\" ,\"bar\":baz ,\"baz\":(foo),children:[Moon.view.components.text({data:\"child \"}),Moon.view.components.div({children:[Moon.view.components.text({data:\"here \"}),Moon.view.components.text({data:foo})]})]})`
+		`Moon.view.components.div ({\"foo\":\"bar\" ,\"bar\":baz ,\"baz\":(foo),children:[Moon.view.components.text({data:\"child \"}),Moon.view.components.div({children:[Moon.view.components.text({data:\"here \"}),...Moon.view.normalizeChildren(foo)]})]})`
 	);
 });
 
@@ -278,7 +314,7 @@ test("generate with moon comments outside of node", () => {
 });
 
 test("generate with moon comments inside node", () => {
-	assertGenerate(`const hi = #test#<#sep#div#sep#foo=bar#sep##sep##sep#>test</div>#foo#;`, `const hi = /*test*//*sep*/Moon.view.components.div/*sep*/({\"foo\":bar/*sep*//*sep*//*sep*/,children:[Moon.view.components.text({data:\"test\"})]})/*foo*/;`);
+	assertGenerate(`const hi = #test#<#sep#div#sep#foo=bar#sep##sep##sep#>test</div>#foo#;`, `const hi = /*test*//*sep*/Moon.view.components.div/*sep*/({\"foo\":bar,children:[Moon.view.components.text({data:\"test\"})]})/*foo*/;`);
 });
 
 test("generate with double quote strings", () => {

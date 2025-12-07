@@ -6,75 +6,75 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<style>
 		:root {
-			--bg: #0f1115;
-			--panel: #11141b;
-			--muted: #6b7280;
+			--bg: #0c0d10;
+			--panel: #111319;
+			--muted: #7a808c;
 			--text: #e5e7eb;
-			--accent: #7dd3fc;
-			--border: #1c1f27;
+			--accent: #8de1ff;
+			--border: #1a1d24;
 		}
 		* { box-sizing: border-box; }
-	body {
-		margin: 0;
-		padding: 16px;
-		background: var(--bg);
-		color: var(--text);
+		body {
+			margin: 0;
+			padding: 12px;
+			background: var(--bg);
+			color: var(--text);
 			font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
-			line-height: 1.5;
-			font-size: 13px;
+			line-height: 1.45;
+			font-size: 12px;
 		}
-	.layout {
-		max-width: 960px;
-		margin: 0 auto;
-		display: grid;
-		gap: 10px;
-		align-items: start;
-	}
-	.panel {
-		background: var(--panel);
-		border: 1px solid var(--border);
-		border-radius: 8px;
-		padding: 10px 12px;
-	}
+		.layout {
+			max-width: 880px;
+			margin: 0 auto;
+			display: grid;
+			gap: 6px;
+			align-items: start;
+		}
+		.panel {
+			background: var(--panel);
+			border: 1px solid var(--border);
+			border-radius: 3px;
+			padding: 8px;
+		}
 		.header {
 			display: flex;
 			align-items: center;
 			justify-content: space-between;
-			gap: 8px;
+			gap: 6px;
 			flex-wrap: wrap;
 		}
 		.tabs {
 			display: inline-flex;
-			gap: 4px;
+			gap: 3px;
 			flex-wrap: wrap;
 		}
 		.tab {
 			border: 1px solid var(--border);
 			background: transparent;
 			color: var(--text);
-			padding: 5px 8px;
-			border-radius: 6px;
+			padding: 3px 6px;
+			border-radius: 3px;
 			cursor: pointer;
 			transition: border-color 120ms ease, color 120ms ease, background-color 120ms ease;
 		}
 		.tab.active {
 			border-color: var(--accent);
 			color: var(--accent);
-			background: rgba(125,211,252,0.08);
+			background: rgba(141, 225, 255, 0.08);
 		}
 		.filters {
 			display: grid;
-			grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-			gap: 8px;
+			grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+			gap: 5px;
 		}
 		input, select, button {
 			font-family: inherit;
-			font-size: 13px;
+			font-size: 12px;
 			background: #0d0f14;
 			color: var(--text);
 			border: 1px solid var(--border);
-			border-radius: 6px;
-			padding: 7px 8px;
+			border-radius: 3px;
+			padding: 5px 6px;
 		}
 		input:focus, select:focus, button:focus {
 			outline: 1px solid var(--accent);
@@ -82,13 +82,13 @@
 		}
 		.list {
 			display: grid;
-			gap: 8px;
+			gap: 5px;
 		}
 		.card {
 			border: 1px solid var(--border);
-			border-radius: 6px;
-			padding: 10px;
-			background: #0d0f14;
+			border-radius: 3px;
+			padding: 7px;
+			background: #0f1116;
 			transition: border-color 120ms ease;
 		}
 		.card:hover {
@@ -97,52 +97,52 @@
 		.card-head {
 			display: flex;
 			justify-content: space-between;
-			gap: 8px;
+			gap: 6px;
 			flex-wrap: wrap;
 			align-items: center;
 		}
 		.meta {
 			display: flex;
-			gap: 8px;
+			gap: 5px;
 			align-items: center;
 			color: var(--muted);
-			font-size: 13px;
+			font-size: 11px;
 		}
 		.tag {
 			display: inline-flex;
 			align-items: center;
-			gap: 5px;
-			padding: 4px 8px;
-			border-radius: 5px;
-			background: #0f1115;
+			gap: 4px;
+			padding: 2px 5px;
+			border-radius: 3px;
+			background: #0c0d10;
 			color: var(--accent);
-			font-size: 12px;
+			font-size: 11px;
 			border: 1px solid var(--border);
 		}
 		.badge {
-			padding: 3px 7px;
-			border-radius: 5px;
+			padding: 2px 6px;
+			border-radius: 3px;
 			font-size: 11px;
 			border: 1px solid var(--border);
 			color: var(--muted);
 		}
-	form.new-item {
-		display: grid;
-		grid-template-columns: 2fr 1fr 1fr auto auto;
-		gap: 6px;
-		align-items: center;
-	}
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
-	}
+		form.new-item {
+			display: grid;
+			grid-template-columns: minmax(170px, 2fr) minmax(140px, 1.5fr) minmax(130px, 1.2fr) minmax(120px, 1.1fr) auto;
+			gap: 5px;
+			align-items: center;
+		}
+		.sr-only {
+			position: absolute;
+			width: 1px;
+			height: 1px;
+			padding: 0;
+			margin: -1px;
+			overflow: hidden;
+			clip: rect(0, 0, 0, 0);
+			white-space: nowrap;
+			border: 0;
+		}
 		@media (max-width: 720px) {
 			form.new-item { grid-template-columns: 1fr; }
 			.header { flex-direction: column; align-items: flex-start; }
@@ -150,14 +150,14 @@
 		.empty {
 			text-align: center;
 			color: var(--muted);
-			padding: 24px;
+			padding: 14px;
 			border: 1px dashed var(--border);
-			border-radius: 6px;
+			border-radius: 3px;
 		}
 	</style>
 </head>
 <body>
-	<div id="root" className="layout"></div>
+	<div id="root" class="layout"></div>
 
 	<!-- Point this src to your vendored copy of moon-web.min.js -->
 	<script src="../packages/moon-web/dist/moon-web.min.js"></script>
@@ -252,33 +252,32 @@
 		}
 
 		function renderItem(item) {
-			var statusColors = {
-				todo: "#e5e7eb",
-				doing: "#7dd3fc",
-				review: "#facc15",
-				done: "#34d399"
-			};
+			var statusColors = { todo: "#e5e7eb", doing: "#8de1ff", review: "#facc15", done: "#34d399" };
 
-			return Moon.view.components.div ({"class":"card","key":item.id,children:[
-				Moon.view.components.div ({"class":"card-head",children:[
-					Moon.view.components.strong({children:[Moon.view.components.text({data:item.title})]})
-					,Moon.view.components.div ({"class":"meta",children:[
-						Moon.view.components.button ({"class":"badge" ,"style":{borderColor: statusColors[item.status] || "#1c1f27", color: statusColors[item.status] || "#e5e7eb", background: "transparent"} ,"onClick":() => toggleStatus(item.id),children:[Moon.view.components.text({data:item.status})]})
-						,Moon.view.components.div ({"class":"badge" ,"style":{display: "inline-flex", gap: "6px", alignItems: "center"} ,"children":[
-							Moon.view.components.button ({"onClick":() => bumpPriority(item.id, -1) ,"aria-label":"Lower priority" ,"style":{background: "transparent", color: "var(--muted)", border: "none", cursor: "pointer"},children:[Moon.view.components.text({data:"-"})]})
-							,Moon.view.components.span({children:[Moon.view.components.text({data:"P"}),Moon.view.components.text({data:item.priority})]})
-							,Moon.view.components.button ({"onClick":() => bumpPriority(item.id, 1) ,"aria-label":"Raise priority" ,"style":{background: "transparent", color: "var(--muted)", border: "none", cursor: "pointer"},children:[Moon.view.components.text({data:"+"})]})
-						]})
-						,Moon.view.components.span({children:[Moon.view.components.text({data:new Date(item.updated).toLocaleDateString()})]})
-						,Moon.view.components.button ({"onClick":() => removeItem(item.id) ,"aria-label":"Remove" ,"style":{background: "transparent", color: "var(--muted)", border: "none", cursor: "pointer"},children:[Moon.view.components.text({data:"×"})]})
-					]})
-				]})
-				,Moon.view.components.div ({"style":{marginTop: "8px", display: "flex", gap: "6px", flexWrap: "wrap"} ,"children":
-					item.tags.map(function(tag) {
-						return Moon.view.components.span ({"class":"tag",children:[Moon.view.components.text({data:"#"}),Moon.view.components.text({data:tag})]});
-					})
-				})
-			]});
+			return (
+				<div class="card" key={item.id}>
+					<div class="card-head">
+						<strong>{item.title}</strong>
+						<div class="meta">
+							<button class="badge" style={ { borderColor: statusColors[item.status] || "#1a1d24", color: statusColors[item.status] || "#e5e7eb", background: "transparent" } } onClick={() => toggleStatus(item.id)}>
+								{item.status}
+							</button>
+							<div class="badge" style={ { display: "inline-flex", gap: "6px", alignItems: "center" } }>
+								<button aria-label="Lower priority" style={ { background: "transparent", color: "var(--muted)", border: "none", cursor: "pointer" } } onClick={() => bumpPriority(item.id, -1)}>-</button>
+								<span>P{item.priority}</span>
+								<button aria-label="Raise priority" style={ { background: "transparent", color: "var(--muted)", border: "none", cursor: "pointer" } } onClick={() => bumpPriority(item.id, 1)}>+</button>
+							</div>
+							<span>{new Date(item.updated).toLocaleDateString()}</span>
+							<button aria-label="Remove" style={ { background: "transparent", color: "var(--muted)", border: "none", cursor: "pointer" } } onClick={() => removeItem(item.id)}>×</button>
+						</div>
+					</div>
+					<div style={ { marginTop: "6px", display: "flex", gap: "6px", flexWrap: "wrap" } }>
+						{item.tags.map(function(tag) {
+							return <span class="tag" key={item.id + "-" + tag}>#{tag}</span>;
+						})}
+					</div>
+				</div>
+			);
 		}
 
 		function addItem(evt) {
@@ -315,31 +314,24 @@
 			var items = filteredItems();
 
 			Moon.m.view = (
-				<div className="layout">
-					<div className="panel header">
+				<div class="layout">
+					<div class="panel header">
 						<div>
-							<div style={{fontWeight: "bold"}}>Workspace</div>
-							<div style={{color: "var(--muted)", fontSize: "13px"}}>Search, filter, and track work items</div>
+							<div style={ { fontWeight: "bold" } }>Workspace</div>
+							<div style={ { color: "var(--muted)", fontSize: "12px" } }>Search, filter, and track work items</div>
 						</div>
-						<div className="tabs">
-							<button className={`tab ${state.tab === "all" ? "active" : ""}`} onClick={() => updateField("tab", "all")}>All</button>
-							<button className={`tab ${state.tab === "todo" ? "active" : ""}`} onClick={() => updateField("tab", "todo")}>Todo</button>
-							<button className={`tab ${state.tab === "doing" ? "active" : ""}`} onClick={() => updateField("tab", "doing")}>Doing</button>
-							<button className={`tab ${state.tab === "review" ? "active" : ""}`} onClick={() => updateField("tab", "review")}>Review</button>
-							<button className={`tab ${state.tab === "done" ? "active" : ""}`} onClick={() => updateField("tab", "done")}>Done</button>
+						<div class="tabs">
+							<button class={`tab ${state.tab === "all" ? "active" : ""}`} onClick={() => updateField("tab", "all")}>All</button>
+							<button class={`tab ${state.tab === "todo" ? "active" : ""}`} onClick={() => updateField("tab", "todo")}>Todo</button>
+							<button class={`tab ${state.tab === "doing" ? "active" : ""}`} onClick={() => updateField("tab", "doing")}>Doing</button>
+							<button class={`tab ${state.tab === "review" ? "active" : ""}`} onClick={() => updateField("tab", "review")}>Review</button>
+							<button class={`tab ${state.tab === "done" ? "active" : ""}`} onClick={() => updateField("tab", "done")}>Done</button>
 						</div>
 					</div>
 
-					<div className="panel filters">
-						<label className="sr-only" htmlFor="search">Search</label>
-						<input
-							id="search"
-							type="search"
-							placeholder="Search titles or tags"
-							value={state.q}
-							onInput={(e) => updateField("q", e.target.value)}
-							autoFocus
-						/>
+					<div class="panel filters">
+						<label class="sr-only" for="search">Search</label>
+						<input id="search" type="search" placeholder="Search titles or tags" value={state.q} onInput={(e) => updateField("q", e.target.value)} autoFocus=true/>
 						<select value={state.sort} onChange={(e) => updateField("sort", e.target.value)}>
 							<option value="recent">Sort: Recent</option>
 							<option value="priority">Sort: Priority</option>
@@ -364,21 +356,10 @@
 						</select>
 					</div>
 
-					<div className="panel">
-						<form className="new-item" onSubmit={addItem}>
-							<input
-								type="text"
-								placeholder="New item title"
-								value={state.newTitle}
-								onInput={(e) => updateField("newTitle", e.target.value)}
-								required=true
-							/>
-							<input
-								type="text"
-								placeholder="Tags (comma separated)"
-								value={state.newTag}
-								onInput={(e) => updateField("newTag", e.target.value)}
-							/>
+					<div class="panel">
+						<form class="new-item" onSubmit={addItem}>
+							<input type="text" placeholder="New item title" value={state.newTitle} onInput={(e) => updateField("newTitle", e.target.value)} required=true/>
+							<input type="text" placeholder="Tags (comma separated)" value={state.newTag} onInput={(e) => updateField("newTag", e.target.value)}/>
 							<select value={state.newStatus} onChange={(e) => updateField("newStatus", e.target.value)}>
 								<option value="todo">Status: Todo</option>
 								<option value="doing">Status: Doing</option>
@@ -390,24 +371,16 @@
 								<option value="2">Priority: 2</option>
 								<option value="3">Priority: 3 (high)</option>
 							</select>
-							<button
-								type="submit"
-								disabled={!state.newTitle.trim()}
-								style={{background: "var(--accent)", color: "#0b1222", fontWeight: "bold"}}
-							>Add</button>
-							<span style={{fontSize: "12px", color: "var(--muted)"}}>
-								Title, tags, status, priority
-							</span>
+							<button type="submit" disabled={!state.newTitle.trim()} style={ { background: "var(--accent)", color: "#0b1222", fontWeight: "bold" } }>Add</button>
 						</form>
 					</div>
 
-					<div className="panel" children={
-						[
-							items.length === 0 ?
-								<div className="empty">No items match the current filters.</div> :
-								<div className="list" children={items.map(renderItem)}/>
-						]
-					}/>
+					<div class="panel">
+						{items.length === 0 ?
+							<div class="empty">No items match the current filters.</div> :
+							<div class="list">{items.map(renderItem)}</div>
+						}
+					</div>
 				</div>
 			);
 		}

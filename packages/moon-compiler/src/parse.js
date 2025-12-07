@@ -1,7 +1,7 @@
 /**
  * Matches an identifier character.
  */
-const identifierRE = /[$\w.]/;
+const identifierRE = /[-$\w.]/;
 
 /**
  * Stores an error message, a slice of tokens associated with the error, and a
@@ -247,6 +247,18 @@ const grammar = {
 		parser.and(parser.character("\\"), parser.any),
 		parser.not(["{", "<"])
 	))),
+	fragment: (input, index) => parser.type("fragment", parser.sequence([
+		parser.string("<>"),
+		parser.many(parser.alternates([
+			parser.try(grammar.node),
+			parser.try(grammar.nodeData),
+			parser.try(grammar.nodeDataChildren),
+			parser.try(grammar.fragment),
+			grammar.text,
+			grammar.interpolation
+		])),
+		parser.string("</>")
+	]))(input, index),
 	interpolation: (input, index) => parser.type("interpolation", parser.sequence([
 		parser.character("{"),
 		grammar.expression,
@@ -278,6 +290,7 @@ const grammar = {
 			parser.try(grammar.node),
 			parser.try(grammar.nodeData),
 			parser.try(grammar.nodeDataChildren),
+			parser.try(grammar.fragment),
 			grammar.text,
 			grammar.interpolation
 		])),
@@ -313,6 +326,7 @@ const grammar = {
 	parser.try(grammar.node),
 	parser.try(grammar.nodeData),
 	parser.try(grammar.nodeDataChildren),
+	parser.try(grammar.fragment),
 
 	// Allow failed regular expression or view parses to be interpreted as
 	// operators.

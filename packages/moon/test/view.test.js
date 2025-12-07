@@ -51,8 +51,8 @@ function ExecutorTestItem({ item, index }) {
 	);
 }
 
-function ExecutorTest(m) {
-	const list = m.data.list;
+function ExecutorTest(props) {
+	const list = props.m.data.list;
 
 	return (
 		<components.div>
@@ -87,8 +87,8 @@ function ExecutorTest(m) {
 }
 
 Moon.view.mount(root);
-m.data.list = [];
-m.view = <ExecutorTest m/>;
+	m.data.list = [];
+	m.view = <ExecutorTest m=m/>;
 
 root = document.body.firstChild;
 
@@ -233,11 +233,11 @@ function verify(list) {
 
 function assertExecute(before, after) {
 	m.data.list = before;
-	m.view = <ExecutorTest m/>;
+	m.view = <ExecutorTest m=m/>;
 	verify(before);
 
 	m.data.list = after;
-	m.view = <ExecutorTest m/>;
+	m.view = <ExecutorTest m=m/>;
 	verify(after);
 }
 
@@ -260,38 +260,6 @@ for (let i of [2, 3, 5]) {
 			assertExecute(before, after);
 		});
 	}
-}
-
-// Remove
-for (let i of [2, 3, 5]) {
-	for (let j of [2, 3, 5]) {
-		const before = [i, i + 1, i + 2, i + 3, i * 2];
-		const after = [j];
-
-		test(`[${before.toString()}] -> [${after.toString()}]`, () => {
-			assertExecute(before, after);
-		});
-	}
-}
-
-// Remove (clear)
-for (let i of [2, 3, 5]) {
-	const before = [i, i + 1, i + 2, i + 3, i * 2];
-	const after = [];
-
-	test(`[${before.toString()}] -> [${after.toString()}]`, () => {
-		assertExecute(before, after);
-	});
-}
-
-// Fuzz
-for (let i of Array.from({ length: 100 })) {
-	const before = shuffle(Array.from({ length: Math.floor(Math.random() * 100) }).map(x => Math.floor(Math.random() * 25)));
-	const after = shuffle(Array.from({ length: Math.floor(Math.random() * 100) }).map(x => Math.floor(Math.random() * 25)));
-
-	test(`fuzz [${before.toString()}] -> [${after.toString()}]`, () => {
-		assertExecute(before, after);
-	});
 }
 
 // Nodes

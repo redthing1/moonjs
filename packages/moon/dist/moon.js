@@ -98,9 +98,46 @@
 		_loop();
 	}
 
+	/**
+	 * Normalize arbitrary child values into an array of Moon view nodes.
+	 *
+	 * - Strings/numbers/bigints become text nodes.
+	 * - Arrays are flattened recursively.
+	 * - Existing view nodes are passed through.
+	 * - Null/undefined/booleans are ignored.
+	 */
+	function normalizeChildren(value) {
+		if (value === null || value === undefined || typeof value === "boolean") {
+			return [];
+		}
+		if (Array.isArray(value)) {
+			var normalized = [];
+			for (var i = 0; i < value.length; i++) {
+				var children = normalizeChildren(value[i]);
+				for (var j = 0; j < children.length; j++) {
+					normalized.push(children[j]);
+				}
+			}
+			return normalized;
+		}
+		var valueType = typeof value;
+		if (valueType === "string" || valueType === "number" || valueType === "bigint") {
+			return [components.text({
+				data: String(value)
+			})];
+		}
+		if (value && value.name !== undefined) {
+			return [value];
+		}
+		return [components.text({
+			data: String(value)
+		})];
+	}
+
 	var view = {
 		components: components,
-		mount: mount
+		mount: mount,
+		normalizeChildren: normalizeChildren
 	};
 
 	/**
