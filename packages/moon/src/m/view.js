@@ -5,12 +5,6 @@ import { viewOld, viewOldUpdate, viewOldElement, viewOldElementUpdate } from "mo
  */
 const removeDataPropertyCache = {};
 
-const warnings = {
-	unknownProp: Object.create(null),
-	mixedKeys: false,
-	dupKeys: false
-};
-
 export function cls() {
 	let out = "";
 	for (let i = 0; i < arguments.length; i++) {
@@ -33,20 +27,7 @@ export function cls() {
 
 function warnOnce(category, message) {
 	if (process.env.MOON_ENV === "production") return;
-	if (category === "mixedKeys") {
-		if (warnings.mixedKeys) return;
-		warnings.mixedKeys = true;
-	} else if (category === "dupKeys") {
-		if (warnings.dupKeys) return;
-		warnings.dupKeys = true;
-	} else {
-		if (warnings.unknownProp[message]) return;
-		warnings.unknownProp[message] = true;
-	}
-	/* istanbul ignore next */
-	if (typeof console !== "undefined" && console.warn) {
-		console.warn(message);
-	}
+	throw new Error(message);
 }
 
 function setRef(ref, value) {
@@ -353,10 +334,10 @@ function viewPatch(nodeOld, nodeOldElement, nodeNew) {
 							keyed.push(key);
 						}
 						if (hasAnyKey && !hasKeys) {
-							warnOnce("mixedKeys", "[Moon] Some children have a key and some do not; list diffing will fallback to index order.");
+							warnOnce("mixedKeys", "[Moon] Some children have a key and some do not; keyed children must be consistently keyed.");
 						}
 						if (dupKeyDetected) {
-							warnOnce("dupKeys", "[Moon] Duplicate keys detected among siblings; keyed diffing may be unstable.");
+							warnOnce("dupKeys", "[Moon] Duplicate keys detected among siblings; keys must be unique.");
 						}
 
 						if (valueOld === undefined) {
@@ -473,7 +454,7 @@ function viewPatch(nodeOld, nodeOldElement, nodeNew) {
 					}
 					default: {
 						if (isUnknownDomProp(nodeOldElement, keyNew)) {
-							warnOnce("unknownProp", `[Moon] Unknown DOM prop "${keyNew}" on <${nodeOld.name}>; it will be set as a property.`);
+							warnOnce("unknownProp", `[Moon] Unknown DOM prop "${keyNew}" on <${nodeOld.name}>; use a valid DOM prop or data-/aria-.`);
 						}
 						// Update a DOM property.
 						nodeOldElement[keyNew] = valueNew;

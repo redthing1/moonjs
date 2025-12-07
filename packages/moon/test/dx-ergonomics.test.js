@@ -46,4 +46,46 @@ describe("Moon JSX ergonomics", () => {
 		const out = cls("a", { b: true, c: false }, ["d", ["e", { f: true, g: false }]], 0, null, undefined);
 		expect(out).toBe("a b d e f");
 	});
+
+	test("unknown DOM props throw in dev", () => {
+		const root = document.createElement("div");
+		document.body.appendChild(root);
+		Moon.view.mount(root);
+
+		expect(() => {
+			Moon.m.view = (
+				<Moon.view.components.div bogusProp="x"/>
+			);
+		}).toThrow();
+	});
+
+	test("mixed keyed/unkeyed siblings throw", () => {
+		const root = document.createElement("div");
+		document.body.appendChild(root);
+		Moon.view.mount(root);
+
+		expect(() => {
+			Moon.m.view = (
+				<Moon.view.components.div>
+					<Moon.view.components.span key="a">A</Moon.view.components.span>
+					<Moon.view.components.span>B</Moon.view.components.span>
+				</Moon.view.components.div>
+			);
+		}).toThrow();
+	});
+
+	test("duplicate keys throw", () => {
+		const root = document.createElement("div");
+		document.body.appendChild(root);
+		Moon.view.mount(root);
+
+		expect(() => {
+			Moon.m.view = (
+				<Moon.view.components.div>
+					<Moon.view.components.span key="a">A</Moon.view.components.span>
+					<Moon.view.components.span key="a">B</Moon.view.components.span>
+				</Moon.view.components.div>
+			);
+		}).toThrow();
+	});
 });
