@@ -259,7 +259,7 @@
 				done: "#34d399"
 			};
 
-			return Moon.view.components.div ({"class":"card",children:[
+			return Moon.view.components.div ({"class":"card","key":item.id,children:[
 				Moon.view.components.div ({"class":"card-head",children:[
 					Moon.view.components.strong({children:[Moon.view.components.text({data:item.title})]})
 					,Moon.view.components.div ({"class":"meta",children:[

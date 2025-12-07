@@ -1,6 +1,6 @@
 import parse from "moon-compiler/src/parse";
 import generate from "moon-compiler/src/generate";
-import { format } from "moon-compiler/src/util";
+import { format, formatDetailed } from "moon-compiler/src/util";
 import { error } from "util/index";
 
 /**
@@ -12,16 +12,10 @@ import { error } from "util/index";
 export default function compile(input) {
 	const parseOutput = parse(input);
 
-	if (process.env.MOON_ENV === "development" && parseOutput.constructor.name === "ParseError") {
-		error(`Invalid input to parser.
-
-Attempted to parse input.
-
-Expected ${parseOutput.expected}.
-
-Received:
-
-${format(input, parseOutput.index)}`);
+	if (parseOutput.constructor.name === "ParseError") {
+		const message = `Invalid Moon view syntax.\n${formatDetailed(input, parseOutput.index, parseOutput.expected)}\n\nContext:\n${format(input, parseOutput.index)}`;
+		error(message);
+		throw new Error(message);
 	}
 
 	return generate(parseOutput[0][0]);

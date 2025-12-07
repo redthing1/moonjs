@@ -54,3 +54,41 @@ export function format(input, index) {
 		}
 	}
 }
+
+/**
+ * Formats a detailed error message with line/column and a caret.
+ *
+ * @param {string} input
+ * @param {number} index
+ * @param {string} expected
+ * @returns {string}
+ */
+export function formatDetailed(input, index, expected) {
+	// Pad input to account for indexes after the end.
+	for (let i = input.length; i <= index; i++) {
+		input += " ";
+	}
+
+	const lines = input.split("\n");
+	let lineNumber = 1;
+	let columnNumber = 1;
+
+	for (let i = 0; i < input.length; i++) {
+		const character = input[i];
+
+		if (i === index) {
+			const line = lines[lineNumber - 1] || "";
+			const prefix = `${lineNumber}:${columnNumber}`;
+			return `Parse error: expected ${expected} at ${lineNumber}:${columnNumber}\n${prefix} ${line}\n${" ".repeat(prefix.length + 1 + columnNumber - 1)}^`;
+		}
+
+		if (character === "\n") {
+			lineNumber += 1;
+			columnNumber = 1;
+		} else {
+			columnNumber += 1;
+		}
+	}
+
+	return `Parse error: expected ${expected} at end of input`;
+}

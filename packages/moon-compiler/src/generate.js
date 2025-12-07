@@ -29,6 +29,8 @@ function unwrapBraces(value) {
 function normalizeAttributeName(name) {
 	if (name === "className") return "class";
 	if (name === "htmlFor") return "for";
+	if (name === "onChange") return "oninput";
+	if (name === "onDoubleClick") return "ondblclick";
 	return name;
 }
 
@@ -155,7 +157,8 @@ export default function generate(tree) {
 			childrenGenerated = "";
 		} else {
 			let separator = "";
-			childrenGenerated = data.separator + "children:[";
+			const dataSeparator = data.separator || "";
+			childrenGenerated = dataSeparator + "children:[";
 
 			for (let i = 0; i < childrenLength; i++) {
 				const child = children[i];

@@ -22,8 +22,48 @@
 - Include it with a plain script tag; it exposes a global `Moon` and compiles `<script type="text/moon">` inline.
 - Use `Moon.view.mount(element)` once to bind to a root, and set `Moon.m.view = (<div>…</div>)` to render. Handlers can be named functions or inline arrows (e.g., `onClick={() => ...}`) now that the compiler unwraps `{}` in attribute values.
 - If you prefer smaller pieces, use `packages/moon/dist/moon.min.js` alone, or add `packages/moon-browser/dist/moon-browser.min.js` for inline Moon scripts.
-- JSX parity notes: `className`/`htmlFor` map to `class`/`for`, boolean shorthand works (`disabled`, `autoFocus`), JSX-style handlers are supported, and prop spread (`{...props}`) is allowed. Fragments (`<>…</>`) are not yet implemented.
-- Extras: top-level spreads are merged (Object.assign), `innerHTML` is supported as an escape hatch, and children with `key` are diffed in a keyed mode when all siblings provide a `key`.
+
+### JSX-ish language notes
+
+- Attributes: `className`/`htmlFor` normalize to `class`/`for`.
+- Booleans: shorthand works (`disabled`, `autoFocus`, etc.).
+- Handlers: JSX-style handlers (`onClick={() => ...}`) compile as expected.
+- Spreads: `{...props}` is merged with explicit props via `Object.assign`.
+- Keys: `key` on children triggers keyed diffing for more stable list updates (all siblings must have a `key` to enable keyed mode).
+- Escape hatch: `innerHTML` is supported (use sparingly).
+- Event aliases: `onChange` maps to `oninput`, `onDoubleClick` maps to `ondblclick`.
+- Errors: compiler reports line/column with a caret to pinpoint parse issues.
+- Not yet: fragments (`<>…</>`) are still TODO.
+
+### Minimal examples
+
+- One-file counter: see snippet below or `examples/moon-web.html`.
+- Minimal dashboard (tabs/search/filter/add/toggle/remove/priority) using the single-file bundle and JSX-ish syntax: `examples/moon-web-dashboard.html` (works via file:// after `npm run build`).
+
+### One-file snippet (works via file://)
+
+```html
+<div id="root"></div>
+<script src="/path/to/moon-web.min.js"></script>
+<script type="text/moon">
+	// Bind Moon to the root element once.
+	Moon.view.mount(document.getElementById("root"));
+
+	var count = 0;
+	function render() {
+		Moon.m.view = (
+			<div className="app">
+				<h1>{'Count: ' + count}</h1>
+				<button onClick={() => { count++; render(); }}>
+					Increment
+				</button>
+			</div>
+		);
+	}
+
+	render();
+</script>
+```
 
 Example (works via file://; also see `examples/moon-web.html`):
 

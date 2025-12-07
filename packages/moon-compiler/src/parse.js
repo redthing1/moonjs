@@ -286,10 +286,10 @@ const grammar = {
 		parser.character(">")
 	]))(input, index),
 	expression: (input, index) => parser.many(parser.alternates([
-		// Single line comment
-		parser.sequence([
-			parser.string("//"),
-			parser.many(parser.not(["\n"]))
+	// Single line comment
+	parser.sequence([
+		parser.string("//"),
+		parser.many(parser.not(["\n"]))
 		]),
 
 		// Multi-line comment
@@ -310,12 +310,12 @@ const grammar = {
 		])),
 		grammar.comment,
 		grammar.value,
-		parser.try(grammar.node),
-		parser.try(grammar.nodeData),
-		parser.try(grammar.nodeDataChildren),
+	parser.try(grammar.node),
+	parser.try(grammar.nodeData),
+	parser.try(grammar.nodeDataChildren),
 
-		// Allow failed regular expression or view parses to be interpreted as
-		// operators.
+	// Allow failed regular expression or view parses to be interpreted as
+	// operators.
 		parser.character("/"),
 		parser.character("<"),
 

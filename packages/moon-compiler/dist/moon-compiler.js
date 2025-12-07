@@ -307,6 +307,8 @@
 	function normalizeAttributeName(name) {
 		if (name === "className") return "class";
 		if (name === "htmlFor") return "for";
+		if (name === "onChange") return "oninput";
+		if (name === "onDoubleClick") return "ondblclick";
 		return name;
 	}
 
@@ -411,7 +413,8 @@
 				childrenGenerated = "";
 			} else {
 				var separator = "";
-				childrenGenerated = _data.separator + "children:[";
+				var dataSeparator = _data.separator || "";
+				childrenGenerated = dataSeparator + "children:[";
 				for (var _i2 = 0; _i2 < childrenLength; _i2++) {
 					var child = children[_i2];
 					var childGenerated = generate(child);
@@ -477,6 +480,39 @@
 	}
 
 	/**
+	 * Formats a detailed error message with line/column and a caret.
+	 *
+	 * @param {string} input
+	 * @param {number} index
+	 * @param {string} expected
+	 * @returns {string}
+	 */
+	function formatDetailed(input, index, expected) {
+		// Pad input to account for indexes after the end.
+		for (var i = input.length; i <= index; i++) {
+			input += " ";
+		}
+		var lines = input.split("\n");
+		var lineNumber = 1;
+		var columnNumber = 1;
+		for (var _i2 = 0; _i2 < input.length; _i2++) {
+			var character = input[_i2];
+			if (_i2 === index) {
+				var line = lines[lineNumber - 1] || "";
+				var prefix = lineNumber + ":" + columnNumber;
+				return "Parse error: expected " + expected + " at " + lineNumber + ":" + columnNumber + "\n" + prefix + " " + line + "\n" + " ".repeat(prefix.length + 1 + columnNumber - 1) + "^";
+			}
+			if (character === "\n") {
+				lineNumber += 1;
+				columnNumber = 1;
+			} else {
+				columnNumber += 1;
+			}
+		}
+		return "Parse error: expected " + expected + " at end of input";
+	}
+
+	/**
 	 * Compiles a JavaScript file with Moon syntax.
 	 *
 	 * @param {string} input
@@ -484,8 +520,10 @@
 	 */
 	function compile(input) {
 		var parseOutput = parse(input);
-		if ("development" === "development" && parseOutput.constructor.name === "ParseError") {
-			error("Invalid input to parser.\n\nAttempted to parse input.\n\nExpected " + parseOutput.expected + ".\n\nReceived:\n\n" + format(input, parseOutput.index));
+		if (parseOutput.constructor.name === "ParseError") {
+			var message = "Invalid Moon view syntax.\n" + formatDetailed(input, parseOutput.index, parseOutput.expected) + "\n\nContext:\n" + format(input, parseOutput.index);
+			error(message);
+			throw new Error(message);
 		}
 		return generate(parseOutput[0][0]);
 	}
