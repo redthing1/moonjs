@@ -20,7 +20,7 @@
 
 - Build once: `npm run build`, then vendor `packages/moon-web/dist/moon-web.min.js` into your project.
 - Include it with a plain script tag; it exposes a global `Moon` and compiles `<script type="text/moon">` inline.
-- Use `Moon.view.mount(element)` once to bind to a root, and set `Moon.m.view = (<div>…</div>)` to render. Keep handlers as named functions or references (e.g., `onClick=increment`) to avoid invalid compiled output.
+- Use `Moon.view.mount(element)` once to bind to a root, and set `Moon.m.view = (<div>…</div>)` to render. Handlers can be named functions or inline arrows (e.g., `onClick={() => ...}`) now that the compiler unwraps `{}` in attribute values.
 - If you prefer smaller pieces, use `packages/moon/dist/moon.min.js` alone, or add `packages/moon-browser/dist/moon-browser.min.js` for inline Moon scripts.
 
 Example (works via file://; also see `examples/moon-web.html`):
@@ -33,16 +33,13 @@ Example (works via file://; also see `examples/moon-web.html`):
 	Moon.view.mount(document.getElementById("root"));
 
 	var count = 0;
-	function increment() {
-		count++;
-		render();
-	}
-
 	function render() {
 		Moon.m.view = (
 			<div class="app">
 				<h1>{'Count: ' + count}</h1>
-				<button onClick=increment>Increment</button>
+				<button onClick={() => { count++; render(); }}>
+					Increment
+				</button>
 			</div>
 		);
 	}

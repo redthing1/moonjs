@@ -1,47 +1,49 @@
 <!doctype html>
 <html lang="en">
+
 <head>
-	<meta charset="utf-8">
-	<title>Moon Web Single-File Demo</title>
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<style>
-		body {
-			font-family: sans-serif;
-			margin: 40px;
-		}
-		.app {
-			display: inline-flex;
-			flex-direction: column;
-			gap: 12px;
-		}
-		button {
-			padding: 10px 14px;
-			font-size: 16px;
-		}
-	</style>
+  <meta charset="utf-8">
+  <title>Moon Web Single-File Demo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 40px;
+    }
+
+    .app {
+      display: inline-flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    button {
+      padding: 10px 14px;
+      font-size: 16px;
+    }
+  </style>
 </head>
+
 <body>
-	<div id="root"></div>
+  <div id="root"></div>
 
-	<!-- Point this src to your vendored copy of moon-web.min.js -->
-	<script src="../packages/moon-web/dist/moon-web.min.js"></script>
+  <!-- Point this src to your vendored copy of moon-web.min.js -->
+  <script src="../packages/moon-web/dist/moon-web.min.js"></script>
 
-	<!-- Inline Moon script is compiled in the browser by moon-web -->
-	<script type="text/moon">
+  <!-- Inline Moon script is compiled in the browser by moon-web -->
+  <script type="text/moon">
 		// Attach Moon to the root element and render (ES5-friendly).
 		Moon.view.mount(document.getElementById("root"));
 
 		var count = 0;
-		function increment() {
-			count++;
-			render();
-		}
 
 		function render() {
 			Moon.m.view = (
 				<div class="app">
 					<h1>{'Count: ' + count}</h1>
-					<button onClick=increment>Increment</button>
+					<button onClick={() => { count++; render(); }}>
+						Increment
+					</button>
 				</div>
 			);
 		}
@@ -49,4 +51,5 @@
 		render();
 	</script>
 </body>
+
 </html>

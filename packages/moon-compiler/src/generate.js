@@ -11,6 +11,22 @@ const whitespaceRE = /^\s+$/;
 const textSpecialRE = /(^|[^\\])("|\n)/g;
 
 /**
+ * If a parse value is wrapped in braces (e.g., `{ expression }`), return the
+ * inner expression node so we don't emit the braces verbatim.
+ *
+ * @param {any} value
+ * @returns {any} unwrapped value
+ */
+function unwrapBraces(value) {
+	return (
+		Array.isArray(value) &&
+		value.length === 3 &&
+		value[0] === "{" &&
+		value[2] === "}"
+	) ? value[1] : value;
+}
+
+/**
  * Generates a name for a function call.
  *
  * @param {string} nameTree
@@ -56,7 +72,8 @@ export default function generate(tree) {
 
 		for (let i = 0; i < value.length; i++) {
 			const pair = value[i];
-			output += `${separator}"${generate(pair[0])}":${generate(pair[2])}${generate(pair[3])}`;
+			const attributeValue = unwrapBraces(pair[2]);
+			output += `${separator}"${generate(pair[0])}":${generate(attributeValue)}${generate(pair[3])}`;
 			separator = ",";
 		}
 
