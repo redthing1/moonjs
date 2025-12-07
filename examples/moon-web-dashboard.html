@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<title>Moon Web — Minimal Workspace Demo</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<style>
+		:root {
+			--bg: #0f1115;
+			--panel: #11141b;
+			--muted: #6b7280;
+			--text: #e5e7eb;
+			--accent: #7dd3fc;
+			--border: #1c1f27;
+		}
+		* { box-sizing: border-box; }
+		body {
+			margin: 0;
+			padding: 16px;
+			background: var(--bg);
+			color: var(--text);
+			font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+			line-height: 1.5;
+			font-size: 13px;
+		}
+		.layout {
+			max-width: 960px;
+			margin: 0 auto;
+			display: grid;
+			gap: 10px;
+			align-items: start;
+		}
+		.panel {
+			background: var(--panel);
+			border: 1px solid var(--border);
+			border-radius: 8px;
+			padding: 10px 12px;
+		}
+		.header {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 8px;
+			flex-wrap: wrap;
+		}
+		.tabs {
+			display: inline-flex;
+			gap: 4px;
+			flex-wrap: wrap;
+		}
+		.tab {
+			border: 1px solid var(--border);
+			background: transparent;
+			color: var(--text);
+			padding: 5px 8px;
+			border-radius: 6px;
+			cursor: pointer;
+			transition: border-color 120ms ease, color 120ms ease, background-color 120ms ease;
+		}
+		.tab.active {
+			border-color: var(--accent);
+			color: var(--accent);
+			background: rgba(125,211,252,0.08);
+		}
+		.filters {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+			gap: 8px;
+		}
+		input, select, button {
+			font-family: inherit;
+			font-size: 13px;
+			background: #0d0f14;
+			color: var(--text);
+			border: 1px solid var(--border);
+			border-radius: 6px;
+			padding: 7px 8px;
+		}
+		input:focus, select:focus, button:focus {
+			outline: 1px solid var(--accent);
+			outline-offset: 1px;
+		}
+		.list {
+			display: grid;
+			gap: 8px;
+		}
+		.card {
+			border: 1px solid var(--border);
+			border-radius: 6px;
+			padding: 10px;
+			background: #0d0f14;
+			transition: border-color 120ms ease;
+		}
+		.card:hover {
+			border-color: var(--accent);
+		}
+		.card-head {
+			display: flex;
+			justify-content: space-between;
+			gap: 8px;
+			flex-wrap: wrap;
+			align-items: center;
+		}
+		.meta {
+			display: flex;
+			gap: 8px;
+			align-items: center;
+			color: var(--muted);
+			font-size: 13px;
+		}
+		.tag {
+			display: inline-flex;
+			align-items: center;
+			gap: 5px;
+			padding: 4px 8px;
+			border-radius: 5px;
+			background: #0f1115;
+			color: var(--accent);
+			font-size: 12px;
+			border: 1px solid var(--border);
+		}
+		.badge {
+			padding: 3px 7px;
+			border-radius: 5px;
+			font-size: 11px;
+			border: 1px solid var(--border);
+			color: var(--muted);
+		}
+		form.new-item {
+			display: grid;
+			grid-template-columns: 2fr 1fr 1fr 80px;
+			gap: 6px;
+		}
+		@media (max-width: 720px) {
+			form.new-item { grid-template-columns: 1fr; }
+			.header { flex-direction: column; align-items: flex-start; }
+		}
+		.empty {
+			text-align: center;
+			color: var(--muted);
+			padding: 24px;
+			border: 1px dashed var(--border);
+			border-radius: 6px;
+		}
+	</style>
+</head>
+<body>
+	<div id="root" class="layout"></div>
+
+	<!-- Point this src to your vendored copy of moon-web.min.js -->
+	<script src="../packages/moon-web/dist/moon-web.min.js"></script>
+
+	<script type="text/moon">
+		Moon.view.mount(document.getElementById("root"));
+
+		var state = {
+			tab: "all",
+			q: "",
+			sort: "recent",
+			tag: "all",
+			status: "all",
+			items: [
+				{ id: 1, title: "Landing layout", status: "todo", tags: ["design", "web"], priority: 3, updated: 1719955200000 },
+				{ id: 2, title: "Docs IA pass", status: "doing", tags: ["docs"], priority: 2, updated: 1722550800000 },
+				{ id: 3, title: "API mocks", status: "done", tags: ["api", "backend"], priority: 1, updated: 1724203200000 },
+				{ id: 4, title: "Perf profiling", status: "todo", tags: ["ops"], priority: 2, updated: 1724894400000 },
+				{ id: 5, title: "Component polish", status: "doing", tags: ["design", "frontend"], priority: 3, updated: 1725585600000 },
+				{ id: 6, title: "Search relevance tweak", status: "review", tags: ["backend"], priority: 2, updated: 1726276800000 }
+			],
+			newTitle: "",
+			newTag: "",
+			newStatus: "todo",
+			newPriority: 2
+		};
+
+		function now() { return Date.now(); }
+
+		function setState(next) {
+			for (var key in next) {
+				state[key] = next[key];
+			}
+			render();
+		}
+
+		function filteredItems() {
+			var q = state.q.toLowerCase().trim();
+			var tag = state.tag;
+			var status = state.status === "all" ? null : state.status;
+			var tab = state.tab === "all" ? null : state.tab;
+
+			var list = state.items.filter(function(item) {
+				var matchesTab = tab ? item.status === tab : true;
+				var matchesStatus = status ? item.status === status : true;
+				var matchesTag = tag === "all" ? true : item.tags.indexOf(tag) !== -1;
+				var matchesQuery = q === "" ? true : (
+					item.title.toLowerCase().indexOf(q) !== -1 ||
+					item.tags.join(" ").toLowerCase().indexOf(q) !== -1
+				);
+				return matchesTab && matchesStatus && matchesTag && matchesQuery;
+			});
+
+			list.sort(function(a, b) {
+				if (state.sort === "recent") return b.updated - a.updated;
+				if (state.sort === "priority") return b.priority - a.priority;
+				return a.title.localeCompare(b.title);
+			});
+
+			return list;
+		}
+
+		function addItem(evt) {
+			evt.preventDefault();
+			var title = state.newTitle.trim();
+			if (title === "") return;
+
+			var tags = state.newTag.trim() === "" ? [] : state.newTag.split(",").map(function(t) { return t.trim(); }).filter(Boolean);
+			var next = {
+				id: now(),
+				title: title,
+				status: state.newStatus,
+				tags: tags.length ? tags : ["misc"],
+				priority: Number(state.newPriority),
+				updated: now()
+			};
+
+			setState({
+				items: [next].concat(state.items),
+				newTitle: "",
+				newTag: "",
+				newStatus: "todo",
+				newPriority: 2
+			});
+		}
+
+		function updateField(field, value) {
+			var next = {};
+			next[field] = value;
+			setState(next);
+		}
+
+		function render() {
+			var items = filteredItems();
+
+			Moon.m.view = (
+				<div class="layout">
+					<div class="panel header">
+						<div>
+							<div style={{fontWeight: "bold"}}>Workspace</div>
+							<div style={{color: "var(--muted)", fontSize: "13px"}}>Search, filter, and track work items</div>
+						</div>
+						<div class="tabs">
+							<button class={`tab ${state.tab === "all" ? "active" : ""}`} onClick={() => updateField("tab", "all")}>All</button>
+							<button class={`tab ${state.tab === "todo" ? "active" : ""}`} onClick={() => updateField("tab", "todo")}>Todo</button>
+							<button class={`tab ${state.tab === "doing" ? "active" : ""}`} onClick={() => updateField("tab", "doing")}>Doing</button>
+							<button class={`tab ${state.tab === "review" ? "active" : ""}`} onClick={() => updateField("tab", "review")}>Review</button>
+							<button class={`tab ${state.tab === "done" ? "active" : ""}`} onClick={() => updateField("tab", "done")}>Done</button>
+						</div>
+					</div>
+
+					<div class="panel filters">
+						<input
+							type="search"
+							placeholder="Search titles or tags"
+							value={state.q}
+							onInput={(e) => updateField("q", e.target.value)}
+						/>
+						<select value={state.sort} onChange={(e) => updateField("sort", e.target.value)}>
+							<option value="recent">Sort: Recent</option>
+							<option value="priority">Sort: Priority</option>
+							<option value="alpha">Sort: A → Z</option>
+						</select>
+						<select value={state.status} onChange={(e) => updateField("status", e.target.value)}>
+							<option value="all">Status: All</option>
+							<option value="todo">Status: Todo</option>
+							<option value="doing">Status: Doing</option>
+							<option value="review">Status: Review</option>
+							<option value="done">Status: Done</option>
+						</select>
+						<select value={state.tag} onChange={(e) => updateField("tag", e.target.value)}>
+							<option value="all">Tag: All</option>
+							<option value="design">Tag: design</option>
+							<option value="frontend">Tag: frontend</option>
+							<option value="backend">Tag: backend</option>
+							<option value="docs">Tag: docs</option>
+							<option value="ops">Tag: ops</option>
+							<option value="api">Tag: api</option>
+							<option value="misc">Tag: misc</option>
+						</select>
+					</div>
+
+					<div class="panel">
+						<form class="new-item" onSubmit={addItem}>
+							<input
+								type="text"
+								placeholder="New item title"
+								value={state.newTitle}
+								onInput={(e) => updateField("newTitle", e.target.value)}
+								required=true
+							/>
+							<input
+								type="text"
+								placeholder="Tags (comma separated)"
+								value={state.newTag}
+								onInput={(e) => updateField("newTag", e.target.value)}
+							/>
+							<select value={state.newStatus} onChange={(e) => updateField("newStatus", e.target.value)}>
+								<option value="todo">Status: Todo</option>
+								<option value="doing">Status: Doing</option>
+								<option value="review">Status: Review</option>
+								<option value="done">Status: Done</option>
+							</select>
+							<select value={state.newPriority} onChange={(e) => updateField("newPriority", e.target.value)}>
+								<option value="1">Priority: 1 (low)</option>
+								<option value="2">Priority: 2</option>
+								<option value="3">Priority: 3 (high)</option>
+							</select>
+							<button type="submit" style={{gridColumn: "1 / -1", background: "var(--accent)", color: "#0b1222", fontWeight: "bold"}}>Add item</button>
+						</form>
+					</div>
+
+					<div class="panel" children={
+						items.length === 0 ?
+							[<div class="empty">No items match the current filters.</div>] :
+							[<div class="list" children={
+								items.map(function(item) {
+									var statusColors = {
+										todo: "#e5e7eb",
+										doing: "#7dd3fc",
+										review: "#facc15",
+										done: "#34d399"
+									};
+									return (
+										<div class="card">
+											<div class="card-head">
+												<strong>{item.title}</strong>
+												<div class="meta">
+													<span class="badge" style={{borderColor: statusColors[item.status] || "#1c1f27", color: statusColors[item.status] || "#e5e7eb"}}>
+														{item.status}
+													</span>
+													<span class="badge">P{item.priority}</span>
+													<span>{new Date(item.updated).toLocaleDateString()}</span>
+												</div>
+											</div>
+											<div style={{marginTop: "8px", display: "flex", gap: "6px", flexWrap: "wrap"}} children={
+												item.tags.map(function(tag) {
+													return <span class="tag">#{tag}</span>;
+												})
+											}/>
+										</div>
+									);
+								})
+							}/>]
+					}/>
+				</div>
+			);
+		}
+
+		render();
+	</script>
+</body>
+</html>

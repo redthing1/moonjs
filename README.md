@@ -48,6 +48,8 @@ Example (works via file://; also see `examples/moon-web.html`):
 </script>
 ```
 
+For a richer browser-only example (search/sort/filter/new item UI), open `examples/moon-web-dashboard.html` after a build.
+
 ### Summary
 
 - :tada: Small file size (2kb minified + gzip)
