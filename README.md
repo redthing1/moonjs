@@ -31,7 +31,7 @@
 3. Build: `npm run build` (outputs `packages/moon-web/dist/moon-web.min.js`).
 4. Vendor that single file into your project and reference it with `<script src="/path/to/moon-web.min.js"></script>`.
 5. Author views in plain HTML using `<script type="text/moon">…</script>`; open the page directly via `file://` or any static server.
-6. Examples: `examples/moon-web.html` (counter) and `examples/moon-web-dashboard.html` (tabs/search/filter/add/toggle/remove/priority) run offline once the bundle is vendored.
+6. Examples: `examples/moon-web.html` (counter), `examples/moon-web-dashboard.html` (tabs/search/filter/add/toggle/remove/priority), and `examples/moon-web-kanban.html` (multi-column Kanban with filters/move) run offline once the bundle is vendored.
 
 ### JSX-ish language notes
 
@@ -47,6 +47,9 @@
 - Fragments: `<>…</>` flatten into children.
 - Object literals: attribute values like `style={color: "red"}` stay object literals.
 - Children normalization: `{expr}` inside children can be a string/number, a node, or an array of nodes; everything is flattened via `Moon.view.normalizeChildren` so arrays from `map` render as expected and falsy values disappear.
+- Styles: style objects accept hyphenated keys (`{"background-color": "#000"}` is normalized to `backgroundColor`) and camelCase keys.
+- Refs: pass `ref={fnOrRefObj}` to get the underlying element in the browser bundle.
+- Dev warnings: missing-key mixed siblings and unknown DOM props warn in development builds to catch JSX mistakes early.
 
 ### Minimal examples
 

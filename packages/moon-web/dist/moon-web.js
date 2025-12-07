@@ -221,6 +221,28 @@
 			ref.current = value;
 		}
 	}
+	function normalizeStyleInline(style) {
+		if (!style || typeof style !== "object") return style;
+		var keys = Object.keys(style);
+		for (var i = 0; i < keys.length; i++) {
+			var key = keys[i];
+			if (key.indexOf("-") !== -1) {
+				var parts = key.split("-");
+				var next = parts[0];
+				for (var j = 1; j < parts.length; j++) {
+					var part = parts[j];
+					if (part.length > 0) {
+						next += part[0].toUpperCase() + part.slice(1);
+					}
+				}
+				if (!(next in style)) {
+					style[next] = style[key];
+				}
+				delete style[key];
+			}
+		}
+		return style;
+	}
 	function isUnknownDomProp(element, key) {
 		if ("development" === "production") return false;
 		if (!element || typeof element !== "object") return false;
@@ -273,6 +295,7 @@
 							{
 								// Set style properties.
 								var elementStyle = element.style;
+								normalizeStyleInline(value);
 								for (var _valueKey in value) {
 									elementStyle[_valueKey] = value[_valueKey];
 								}
@@ -388,6 +411,8 @@
 							{
 								// Update style properties.
 								var nodeOldElementStyle = nodeOldElement.style;
+								normalizeStyleInline(valueNew);
+								if (valueOld) normalizeStyleInline(valueOld);
 								if (valueOld === undefined) {
 									for (var _valueNewKey2 in valueNew) {
 										nodeOldElementStyle[_valueNewKey2] = valueNew[_valueNewKey2];

@@ -34,6 +34,29 @@ function setRef(ref, value) {
 	}
 }
 
+function normalizeStyleInline(style) {
+	if (!style || typeof style !== "object") return style;
+	const keys = Object.keys(style);
+	for (let i = 0; i < keys.length; i++) {
+		const key = keys[i];
+		if (key.indexOf("-") !== -1) {
+			const parts = key.split("-");
+			let next = parts[0];
+			for (let j = 1; j < parts.length; j++) {
+				const part = parts[j];
+				if (part.length > 0) {
+					next += part[0].toUpperCase() + part.slice(1);
+				}
+			}
+			if (!(next in style)) {
+				style[next] = style[key];
+			}
+			delete style[key];
+		}
+	}
+	return style;
+}
+
 function isUnknownDomProp(element, key) {
 	if (process.env.MOON_ENV === "production") return false;
 	if (!element || typeof element !== "object") return false;
@@ -88,6 +111,7 @@ function viewCreate(node) {
 					case "style": {
 						// Set style properties.
 						const elementStyle = element.style;
+						normalizeStyleInline(value);
 
 						for (const valueKey in value) {
 							elementStyle[valueKey] = value[valueKey];
@@ -207,6 +231,8 @@ function viewPatch(nodeOld, nodeOldElement, nodeNew) {
 					case "style": {
 						// Update style properties.
 						const nodeOldElementStyle = nodeOldElement.style;
+						normalizeStyleInline(valueNew);
+						if (valueOld) normalizeStyleInline(valueOld);
 
 						if (valueOld === undefined) {
 							for (const valueNewKey in valueNew) {

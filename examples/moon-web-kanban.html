@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<title>Moon Web — Minimal Kanban</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<style>
+		:root {
+			--bg: #0c0d10;
+			--panel: #10121a;
+			--muted: #7a808c;
+			--text: #e5e7eb;
+			--accent: #8de1ff;
+			--border: #1a1d24;
+		}
+		* { box-sizing: border-box; }
+		body {
+			margin: 0;
+			padding: 12px;
+			background: var(--bg);
+			color: var(--text);
+			font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+			line-height: 1.45;
+			font-size: 12px;
+		}
+		.header {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			flex-wrap: wrap;
+			gap: 6px;
+			margin-bottom: 8px;
+		}
+		.btn {
+			border: 1px solid var(--border);
+			background: transparent;
+			color: var(--text);
+			border-radius: 3px;
+			padding: 4px 8px;
+			cursor: pointer;
+		}
+		.btn-primary {
+			background: var(--accent);
+			color: #0b1222;
+			border-color: var(--accent);
+			font-weight: 700;
+		}
+		.columns {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+			gap: 8px;
+			align-items: start;
+		}
+		.column {
+			border: 1px solid var(--border);
+			border-radius: 3px;
+			background: var(--panel);
+			padding: 8px;
+		}
+		.column h3 {
+			margin: 0 0 6px;
+			font-size: 12px;
+			letter-spacing: 0.5px;
+			text-transform: uppercase;
+			color: var(--muted);
+		}
+		.card {
+			border: 1px solid var(--border);
+			border-radius: 3px;
+			padding: 7px;
+			background: #0f1116;
+			margin-bottom: 6px;
+		}
+		.card small {
+			color: var(--muted);
+			display: block;
+			margin-top: 4px;
+		}
+		.meta {
+			display: flex;
+			gap: 4px;
+			align-items: center;
+			flex-wrap: wrap;
+		}
+		.tag {
+			border: 1px solid var(--border);
+			border-radius: 3px;
+			padding: 2px 5px;
+			font-size: 11px;
+			color: var(--accent);
+			background: #0c0d10;
+		}
+		form {
+			display: grid;
+			grid-template-columns: 1.2fr 1fr auto;
+			gap: 5px;
+			align-items: center;
+			margin-top: 8px;
+		}
+		input, select {
+			font-family: inherit;
+			font-size: 12px;
+			background: #0d0f14;
+			color: var(--text);
+			border: 1px solid var(--border);
+			border-radius: 3px;
+			padding: 5px 6px;
+		}
+		@media (max-width: 640px) {
+			form { grid-template-columns: 1fr; }
+		}
+	</style>
+</head>
+<body>
+	<div id="root"></div>
+	<script src="../packages/moon-web/dist/moon-web.min.js"></script>
+	<script type="text/moon">
+		Moon.view.mount(document.getElementById("root"));
+
+		var seq = 7;
+		var columns = ["backlog", "doing", "review", "done"];
+		var labels = { backlog: "Backlog", doing: "Doing", review: "Review", done: "Done" };
+		var state = {
+			filter: "all",
+			q: "",
+			items: [
+				{ id: 1, title: "Design tokens", column: "backlog", tag: "design", owner: "Lin" },
+				{ id: 2, title: "API mocks", column: "doing", tag: "backend", owner: "Rae" },
+				{ id: 3, title: "Perf trace", column: "review", tag: "ops", owner: "Dev" },
+				{ id: 4, title: "Docs polish", column: "done", tag: "docs", owner: "Sam" },
+				{ id: 5, title: "List empty state", column: "doing", tag: "frontend", owner: "Lin" },
+				{ id: 6, title: "Analytics event", column: "backlog", tag: "data", owner: "Rae" }
+			],
+			newTitle: "",
+			newTag: "misc",
+			newColumn: "backlog"
+		};
+
+		function setState(next) {
+			for (var k in next) state[k] = next[k];
+			render();
+		}
+
+		function addCard(evt) {
+			evt.preventDefault();
+			var t = state.newTitle.trim();
+			if (t === "") return;
+			var next = {
+				id: ++seq,
+				title: t,
+				tag: state.newTag || "misc",
+				column: state.newColumn,
+				owner: "You"
+			};
+			setState({
+				items: state.items.concat(next),
+				newTitle: ""
+			});
+		}
+
+		function moveCard(id, dir) {
+			setState({
+				items: state.items.map(function(item) {
+					if (item.id !== id) return item;
+					var idx = columns.indexOf(item.column);
+					var nextIdx = Math.min(columns.length - 1, Math.max(0, idx + dir));
+					return Object.assign({}, item, { column: columns[nextIdx] });
+				})
+			});
+		}
+
+		function filteredItems(col) {
+			var q = state.q.toLowerCase().trim();
+			return state.items.filter(function(item) {
+				if (item.column !== col) return false;
+				if (state.filter !== "all" && item.tag !== state.filter) return false;
+				if (q && item.title.toLowerCase().indexOf(q) === -1 && item.tag.toLowerCase().indexOf(q) === -1) return false;
+				return true;
+			});
+		}
+
+		function renderCard(item) {
+			return (
+				<div class="card" key={item.id}>
+					<div class="meta">
+						<strong>{item.title}</strong>
+						<span class="tag">#{item.tag}</span>
+					</div>
+					<small>Owner: {item.owner}</small>
+					<div style={ { display: "flex", gap: "6px", marginTop: "6px" } }>
+						<button class="btn" onClick={() => moveCard(item.id, -1)} disabled={item.column === "backlog"}>←</button>
+						<button class="btn" onClick={() => moveCard(item.id, 1)} disabled={item.column === "done"}>→</button>
+					</div>
+				</div>
+			);
+		}
+
+		function renderColumn(col) {
+			var items = filteredItems(col);
+			return (
+				<div class="column" key={col}>
+					<h3>{labels[col]}</h3>
+					{items.map(renderCard)}
+					{items.length === 0 ? <small style={ { color: "var(--muted)" } }>Empty</small> : null}
+				</div>
+			);
+		}
+
+		function render() {
+			Moon.m.view = (
+				<div>
+					<div class="header">
+						<div>
+							<div style={ { fontWeight: "bold" } }>Minimal Kanban</div>
+							<div style={ { color: "var(--muted)" } }>Filter, search, move tasks between columns.</div>
+						</div>
+						<div style={ { display: "flex", gap: "6px", flexWrap: "wrap" } }>
+							<input type="search" placeholder="Search" value={state.q} onInput={(e) => setState({ q: e.target.value })}/>
+							<select value={state.filter} onChange={(e) => setState({ filter: e.target.value })}>
+								<option value="all">All tags</option>
+								<option value="design">design</option>
+								<option value="frontend">frontend</option>
+								<option value="backend">backend</option>
+								<option value="docs">docs</option>
+								<option value="data">data</option>
+								<option value="ops">ops</option>
+								<option value="misc">misc</option>
+							</select>
+						</div>
+					</div>
+
+					<form onSubmit={addCard}>
+						<input type="text" placeholder="New card title" value={state.newTitle} onInput={(e) => setState({ newTitle: e.target.value })} required=true/>
+						<input type="text" placeholder="Tag (e.g. design)" value={state.newTag} onInput={(e) => setState({ newTag: e.target.value })}/>
+						<select value={state.newColumn} onChange={(e) => setState({ newColumn: e.target.value })}>
+							<option value="backlog">Backlog</option>
+							<option value="doing">Doing</option>
+							<option value="review">Review</option>
+							<option value="done">Done</option>
+						</select>
+						<button class="btn btn-primary" type="submit">Add</button>
+					</form>
+
+					<div class="columns">
+						{columns.map(renderColumn)}
+					</div>
+				</div>
+			);
+		}
+
+		render();
+	</script>
+</body>
+</html>
