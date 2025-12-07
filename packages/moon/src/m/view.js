@@ -7,14 +7,38 @@ const removeDataPropertyCache = {};
 
 const warnings = {
 	unknownProp: Object.create(null),
-	mixedKeys: false
+	mixedKeys: false,
+	dupKeys: false
 };
+
+export function cls() {
+	let out = "";
+	for (let i = 0; i < arguments.length; i++) {
+		const arg = arguments[i];
+		if (!arg) continue;
+		const type = typeof arg;
+		if (type === "string" || type === "number") {
+			out += (out ? " " : "") + arg;
+		} else if (Array.isArray(arg)) {
+			const nested = cls.apply(null, arg);
+			if (nested) out += (out ? " " : "") + nested;
+		} else if (type === "object") {
+			for (const key in arg) {
+				if (arg[key]) out += (out ? " " : "") + key;
+			}
+		}
+	}
+	return out;
+}
 
 function warnOnce(category, message) {
 	if (process.env.MOON_ENV === "production") return;
 	if (category === "mixedKeys") {
 		if (warnings.mixedKeys) return;
 		warnings.mixedKeys = true;
+	} else if (category === "dupKeys") {
+		if (warnings.dupKeys) return;
+		warnings.dupKeys = true;
 	} else {
 		if (warnings.unknownProp[message]) return;
 		warnings.unknownProp[message] = true;
@@ -31,6 +55,9 @@ function setRef(ref, value) {
 		ref(value);
 	} else if (typeof ref === "object") {
 		ref.current = value;
+	} else if (process.env.MOON_ENV !== "production") {
+		/* istanbul ignore next */
+		console.warn("[Moon] Ignoring unsupported ref type:", ref);
 	}
 }
 
@@ -39,6 +66,7 @@ function normalizeStyleInline(style) {
 	const keys = Object.keys(style);
 	for (let i = 0; i < keys.length; i++) {
 		const key = keys[i];
+		if (key === null || key === undefined) continue;
 		if (key.indexOf("-") !== -1) {
 			const parts = key.split("-");
 			let next = parts[0];
@@ -65,6 +93,25 @@ function isUnknownDomProp(element, key) {
 	if (key[0] === "o" && key[1] === "n") return false;
 	if (key.indexOf("data-") === 0 || key.indexOf("aria-") === 0) return false;
 	return !(key in element);
+}
+
+function normalizeEventKey(key) {
+	switch (key) {
+		case "onChange": return "oninput";
+		case "onDoubleClick": return "ondblclick";
+		case "onFocus": return "onfocus";
+		case "onBlur": return "onblur";
+		case "onSubmit": return "onsubmit";
+		case "onMouseEnter": return "onmouseenter";
+		case "onMouseLeave": return "onmouseleave";
+		case "onMouseOver": return "onmouseover";
+		case "onMouseOut": return "onmouseout";
+		case "onKeyDown": return "onkeydown";
+		case "onKeyUp": return "onkeyup";
+		case "onKeyPress": return "onkeypress";
+		case "onInput": return "oninput";
+		default: return key.toLowerCase();
+	}
 }
 
 /**
@@ -97,7 +144,7 @@ function viewCreate(node) {
 
 			if (key[0] === "o" && key[1] === "n") {
 				// Set an event listener.
-				element[key.toLowerCase()] = value;
+				element[normalizeEventKey(key)] = value;
 			} else {
 				switch (key) {
 					case "attributes": {
@@ -194,12 +241,12 @@ function viewPatch(nodeOld, nodeOldElement, nodeNew) {
 	// match.
 	for (const keyNew in nodeNewData) {
 		const valueOld = nodeOldData[keyNew];
-		const valueNew = nodeNewData[keyNew];
+			const valueNew = nodeNewData[keyNew];
 
 		if (valueOld !== valueNew) {
 			if (keyNew[0] === "o" && keyNew[1] === "n") {
 				// Update an event.
-				nodeOldElement[keyNew.toLowerCase()] = valueNew;
+				nodeOldElement[normalizeEventKey(keyNew)] = valueNew;
 			} else {
 				switch (keyNew) {
 					case "attributes": {
@@ -289,17 +336,27 @@ function viewPatch(nodeOld, nodeOldElement, nodeNew) {
 						const keyed = [];
 						let hasKeys = true;
 						let hasAnyKey = false;
+						const keySet = Object.create(null);
+						let dupKeyDetected = false;
 						for (let i = 0; i < valueNewLength; i++) {
 							const key = valueNew[i].data && valueNew[i].data.key;
 							if (key === undefined) {
 								hasKeys = false;
 							} else {
 								hasAnyKey = true;
+								if (keySet[key]) {
+									dupKeyDetected = true;
+								} else {
+									keySet[key] = true;
+								}
 							}
 							keyed.push(key);
 						}
 						if (hasAnyKey && !hasKeys) {
 							warnOnce("mixedKeys", "[Moon] Some children have a key and some do not; list diffing will fallback to index order.");
+						}
+						if (dupKeyDetected) {
+							warnOnce("dupKeys", "[Moon] Duplicate keys detected among siblings; keyed diffing may be unstable.");
 						}
 
 						if (valueOld === undefined) {

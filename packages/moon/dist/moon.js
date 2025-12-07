@@ -134,53 +134,42 @@
 		})];
 	}
 
-	var view = {
-		components: components,
-		mount: mount,
-		normalizeChildren: normalizeChildren
-	};
-
-	/**
-	 * Returns a view given routes that map to views and the current route.
-	 *
-	 * @param {object} input
-	 * @returns {object} view
-	 */
-	function router(input) {
-		var route = input.route;
-		var routeSegment = "/";
-		var routes = input.routes;
-		for (var i = 1; i < route.length; i++) {
-			var routeCharacter = route[i];
-			if (routeCharacter === "/") {
-				routes = (routeSegment in routes ? routes[routeSegment] : routes["/*"])[1];
-				routeSegment = "/";
-			} else {
-				routeSegment += routeCharacter;
-			}
-		}
-		return (routeSegment in routes ? routes[routeSegment] : routes["/*"])[0](input);
-	}
-
-	var route = {
-		router: router
-	};
-
-	var data = {};
-
 	/**
 	 * Cache for default property values
 	 */
 	var removeDataPropertyCache = {};
 	var warnings = {
 		unknownProp: Object.create(null),
-		mixedKeys: false
+		mixedKeys: false,
+		dupKeys: false
 	};
+	function cls() {
+		var out = "";
+		for (var i = 0; i < arguments.length; i++) {
+			var arg = arguments[i];
+			if (!arg) continue;
+			var type = typeof arg;
+			if (type === "string" || type === "number") {
+				out += (out ? " " : "") + arg;
+			} else if (Array.isArray(arg)) {
+				var nested = cls.apply(null, arg);
+				if (nested) out += (out ? " " : "") + nested;
+			} else if (type === "object") {
+				for (var key in arg) {
+					if (arg[key]) out += (out ? " " : "") + key;
+				}
+			}
+		}
+		return out;
+	}
 	function warnOnce(category, message) {
 		if ("development" === "production") return;
 		if (category === "mixedKeys") {
 			if (warnings.mixedKeys) return;
 			warnings.mixedKeys = true;
+		} else if (category === "dupKeys") {
+			if (warnings.dupKeys) return;
+			warnings.dupKeys = true;
 		} else {
 			if (warnings.unknownProp[message]) return;
 			warnings.unknownProp[message] = true;
@@ -196,6 +185,9 @@
 			ref(value);
 		} else if (typeof ref === "object") {
 			ref.current = value;
+		} else if ("development" !== "production") {
+			/* istanbul ignore next */
+			console.warn("[Moon] Ignoring unsupported ref type:", ref);
 		}
 	}
 	function normalizeStyleInline(style) {
@@ -203,6 +195,7 @@
 		var keys = Object.keys(style);
 		for (var i = 0; i < keys.length; i++) {
 			var key = keys[i];
+			if (key === null || key === undefined) continue;
 			if (key.indexOf("-") !== -1) {
 				var parts = key.split("-");
 				var next = parts[0];
@@ -228,6 +221,38 @@
 		if (key[0] === "o" && key[1] === "n") return false;
 		if (key.indexOf("data-") === 0 || key.indexOf("aria-") === 0) return false;
 		return !(key in element);
+	}
+	function normalizeEventKey(key) {
+		switch (key) {
+			case "onChange":
+				return "oninput";
+			case "onDoubleClick":
+				return "ondblclick";
+			case "onFocus":
+				return "onfocus";
+			case "onBlur":
+				return "onblur";
+			case "onSubmit":
+				return "onsubmit";
+			case "onMouseEnter":
+				return "onmouseenter";
+			case "onMouseLeave":
+				return "onmouseleave";
+			case "onMouseOver":
+				return "onmouseover";
+			case "onMouseOut":
+				return "onmouseout";
+			case "onKeyDown":
+				return "onkeydown";
+			case "onKeyUp":
+				return "onkeyup";
+			case "onKeyPress":
+				return "onkeypress";
+			case "onInput":
+				return "oninput";
+			default:
+				return key.toLowerCase();
+		}
 	}
 
 	/**
@@ -257,7 +282,7 @@
 				var value = nodeData[key];
 				if (key[0] === "o" && key[1] === "n") {
 					// Set an event listener.
-					element[key.toLowerCase()] = value;
+					element[normalizeEventKey(key)] = value;
 				} else {
 					switch (key) {
 						case "attributes":
@@ -356,7 +381,7 @@
 			if (valueOld !== valueNew) {
 				if (keyNew[0] === "o" && keyNew[1] === "n") {
 					// Update an event.
-					nodeOldElement[keyNew.toLowerCase()] = valueNew;
+					nodeOldElement[normalizeEventKey(keyNew)] = valueNew;
 				} else {
 					switch (keyNew) {
 						case "attributes":
@@ -444,17 +469,27 @@
 								var keyed = [];
 								var hasKeys = true;
 								var hasAnyKey = false;
+								var keySet = Object.create(null);
+								var dupKeyDetected = false;
 								for (var i = 0; i < valueNewLength; i++) {
 									var key = valueNew[i].data && valueNew[i].data.key;
 									if (key === undefined) {
 										hasKeys = false;
 									} else {
 										hasAnyKey = true;
+										if (keySet[key]) {
+											dupKeyDetected = true;
+										} else {
+											keySet[key] = true;
+										}
 									}
 									keyed.push(key);
 								}
 								if (hasAnyKey && !hasKeys) {
 									warnOnce("mixedKeys", "[Moon] Some children have a key and some do not; list diffing will fallback to index order.");
+								}
+								if (dupKeyDetected) {
+									warnOnce("dupKeys", "[Moon] Duplicate keys detected among siblings; keyed diffing may be unstable.");
 								}
 								if (valueOld === undefined) {
 									for (var _i = 0; _i < valueNewLength; _i++) {
@@ -650,7 +685,7 @@
 	 *
 	 * @param {object} viewNew
 	 */
-	var view$1 = {
+	var view = {
 		set: function set(viewNew) {
 			// When given a new view, patch the old element to match the new node using
 			// the old node as reference.
@@ -673,6 +708,41 @@
 			viewOldUpdate(viewNew);
 		}
 	};
+
+	var view$1 = {
+		components: components,
+		mount: mount,
+		normalizeChildren: normalizeChildren,
+		cls: cls
+	};
+
+	/**
+	 * Returns a view given routes that map to views and the current route.
+	 *
+	 * @param {object} input
+	 * @returns {object} view
+	 */
+	function router(input) {
+		var route = input.route;
+		var routeSegment = "/";
+		var routes = input.routes;
+		for (var i = 1; i < route.length; i++) {
+			var routeCharacter = route[i];
+			if (routeCharacter === "/") {
+				routes = (routeSegment in routes ? routes[routeSegment] : routes["/*"])[1];
+				routeSegment = "/";
+			} else {
+				routeSegment += routeCharacter;
+			}
+		}
+		return (routeSegment in routes ? routes[routeSegment] : routes["/*"])[0](input);
+	}
+
+	var route = {
+		router: router
+	};
+
+	var data = {};
 
 	var time = {
 		get: function get() {
@@ -766,7 +836,7 @@
 
 	var m = {};
 	m.data = data;
-	Object.defineProperty(m, "view", view$1);
+	Object.defineProperty(m, "view", view);
 	Object.defineProperty(m, "time", time);
 	Object.defineProperty(m, "storage", storage);
 	Object.defineProperty(m, "http", http);
@@ -776,7 +846,7 @@
 		m: m,
 		route: route,
 		version: "1.0.0-beta.7",
-		view: view
+		view: view$1
 	};
 
 	return index;

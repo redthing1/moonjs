@@ -50,6 +50,7 @@
 - Styles: style objects accept hyphenated keys (`{"background-color": "#000"}` is normalized to `backgroundColor`) and camelCase keys.
 - Refs: pass `ref={fnOrRefObj}` to get the underlying element in the browser bundle.
 - Dev warnings: missing-key mixed siblings and unknown DOM props warn in development builds to catch JSX mistakes early.
+- Helper: `Moon.view.cls()` merges class names from strings/arrays/objects (truthy entries only).
 
 ### Minimal examples
 
