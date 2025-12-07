@@ -1,5 +1,3 @@
-Docs are vendored under `docs/` (from `gh-pages/src`) for offline reference. To use Moon entirely in-browser with no npm/CDN, vendor `packages/moon/dist/moon.min.js` (or also `packages/moon-browser/dist/moon-browser.min.js` if you want `<script type="text/moon">` compilation) and load via a plain `<script src="/path/to/moon.min.js"></script>`.
-
 <p align="center">
 	<a href="https://moonjs.org" target="_blank">
 		<img width="125" src="https://raw.githubusercontent.com/kbrsh/moon/gh-pages/img/logo.png">
@@ -13,6 +11,45 @@ Docs are vendored under `docs/` (from `gh-pages/src`) for offline reference. To 
 	<a href="https://moon-slack.herokuapp.com"><img src="https://moon-slack.herokuapp.com/badge.svg" alt="Slack"></a>
 	<a href="https://license.kabir.sh"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
 </p>
+
+## Offline docs
+
+- All docs are vendored in `docs/` (copied from `gh-pages/src`) for offline reference.
+
+## Browser-only usage (single file)
+
+- Build once: `npm run build`, then vendor `packages/moon-web/dist/moon-web.min.js` into your project.
+- Include it with a plain script tag; it exposes a global `Moon` and compiles `<script type="text/moon">` inline.
+- Use `Moon.view.mount(element)` once to bind to a root, and set `Moon.m.view = (<div>…</div>)` to render. Keep handlers as named functions or references (e.g., `onClick=increment`) to avoid invalid compiled output.
+- If you prefer smaller pieces, use `packages/moon/dist/moon.min.js` alone, or add `packages/moon-browser/dist/moon-browser.min.js` for inline Moon scripts.
+
+Example (works via file://; also see `examples/moon-web.html`):
+
+```html
+<div id="root"></div>
+<script src="/path/to/moon-web.min.js"></script>
+<script type="text/moon">
+	// Bind Moon to the root element once.
+	Moon.view.mount(document.getElementById("root"));
+
+	var count = 0;
+	function increment() {
+		count++;
+		render();
+	}
+
+	function render() {
+		Moon.m.view = (
+			<div class="app">
+				<h1>{'Count: ' + count}</h1>
+				<button onClick=increment>Increment</button>
+			</div>
+		);
+	}
+
+	render();
+</script>
+```
 
 ### Summary
 
