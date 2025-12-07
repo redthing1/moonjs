@@ -164,7 +164,16 @@
 
 	<script type="text/moon">
 		Moon.view.mount(document.getElementById("root"));
+		var cls = Moon.view.cls;
 
+		var tabs = ["all", "todo", "doing", "review", "done"];
+		var statusOptions = ["all", "todo", "doing", "review", "done"];
+		var tagOptions = ["all", "design", "frontend", "backend", "docs", "ops", "api", "misc"];
+		var sortOptions = [
+			{ value: "recent", label: "Sort: Recent" },
+			{ value: "priority", label: "Sort: Priority" },
+			{ value: "alpha", label: "Sort: A → Z" }
+		];
 		var state = {
 			tab: "all",
 			q: "",
@@ -200,6 +209,18 @@
 				state[key] = next[key];
 			}
 			render();
+		}
+
+		function renderOptions(list, prefix) {
+			return list.map(function(value) {
+				return <option value={value} key={"opt-" + value}>{prefix ? prefix + value : value}</option>;
+			});
+		}
+
+		function renderSelectOptions(objects) {
+			return objects.map(function(item) {
+				return <option value={item.value} key={"opt-" + item.value}>{item.label}</option>;
+			});
 		}
 
 		function filteredItems() {
@@ -321,39 +342,22 @@
 							<div style={ { color: "var(--muted)", fontSize: "12px" } }>Search, filter, and track work items</div>
 						</div>
 						<div class="tabs">
-							<button class={`tab ${state.tab === "all" ? "active" : ""}`} onClick={() => updateField("tab", "all")}>All</button>
-							<button class={`tab ${state.tab === "todo" ? "active" : ""}`} onClick={() => updateField("tab", "todo")}>Todo</button>
-							<button class={`tab ${state.tab === "doing" ? "active" : ""}`} onClick={() => updateField("tab", "doing")}>Doing</button>
-							<button class={`tab ${state.tab === "review" ? "active" : ""}`} onClick={() => updateField("tab", "review")}>Review</button>
-							<button class={`tab ${state.tab === "done" ? "active" : ""}`} onClick={() => updateField("tab", "done")}>Done</button>
+							{tabs.map(function(tab) {
+								return (
+									<button class={cls("tab", state.tab === tab && "active")} onClick={() => updateField("tab", tab)} key={"tab-" + tab}>
+										{tab === "all" ? "All" : tab[0].toUpperCase() + tab.slice(1)}
+									</button>
+								);
+							})}
 						</div>
 					</div>
 
 					<div class="panel filters">
 						<label class="sr-only" for="search">Search</label>
-						<input id="search" type="search" placeholder="Search titles or tags" value={state.q} onInput={(e) => updateField("q", e.target.value)} autoFocus=true/>
-						<select value={state.sort} onChange={(e) => updateField("sort", e.target.value)}>
-							<option value="recent">Sort: Recent</option>
-							<option value="priority">Sort: Priority</option>
-							<option value="alpha">Sort: A → Z</option>
-						</select>
-						<select value={state.status} onChange={(e) => updateField("status", e.target.value)}>
-							<option value="all">Status: All</option>
-							<option value="todo">Status: Todo</option>
-							<option value="doing">Status: Doing</option>
-							<option value="review">Status: Review</option>
-							<option value="done">Status: Done</option>
-						</select>
-						<select value={state.tag} onChange={(e) => updateField("tag", e.target.value)}>
-							<option value="all">Tag: All</option>
-							<option value="design">Tag: design</option>
-							<option value="frontend">Tag: frontend</option>
-							<option value="backend">Tag: backend</option>
-							<option value="docs">Tag: docs</option>
-							<option value="ops">Tag: ops</option>
-							<option value="api">Tag: api</option>
-							<option value="misc">Tag: misc</option>
-						</select>
+						<input id="search" type="search" placeholder="Search titles or tags" value={state.q} onInput={(e) => updateField("q", e.target.value)} autofocus=true/>
+						<select value={state.sort} onChange={(e) => updateField("sort", e.target.value)}>{renderSelectOptions(sortOptions)}</select>
+						<select value={state.status} onChange={(e) => updateField("status", e.target.value)}>{renderOptions(statusOptions, "Status: ")}</select>
+						<select value={state.tag} onChange={(e) => updateField("tag", e.target.value)}>{renderOptions(tagOptions, "Tag: ")}</select>
 					</div>
 
 					<div class="panel">
