@@ -51,6 +51,8 @@
 - Refs: pass `ref={fnOrRefObj}` to get the underlying element in the browser bundle.
 - Dev warnings: missing-key mixed siblings and unknown DOM props warn in development builds to catch JSX mistakes early.
 - Helper: `Moon.view.cls()` merges class names from strings/arrays/objects (truthy entries only).
+- Helper: `Moon.view.mergeProps()` shallow-merges objects, handy for combining spreads/defaults.
+- Dev strictness: non-function event handlers, non-object `style`, unknown DOM props, mixed/duplicate keys all throw in development to keep JSX usage clean.
 
 ### Minimal examples
 

@@ -25,6 +25,18 @@ export function cls() {
 	return out;
 }
 
+export function mergeProps() {
+	const target = {};
+	for (let i = 0; i < arguments.length; i++) {
+		const source = arguments[i];
+		if (!source || typeof source !== "object") continue;
+		for (const key in source) {
+			target[key] = source[key];
+		}
+	}
+	return target;
+}
+
 function warnOnce(category, message) {
 	if (process.env.MOON_ENV === "production") return;
 	throw new Error(message);
@@ -91,7 +103,21 @@ function normalizeEventKey(key) {
 		case "onKeyUp": return "onkeyup";
 		case "onKeyPress": return "onkeypress";
 		case "onInput": return "oninput";
-		default: return key.toLowerCase();
+	default: return key.toLowerCase();
+	}
+}
+
+function assertStyleObject(value, nodeName) {
+	if (process.env.MOON_ENV === "production") return;
+	if (!value || typeof value !== "object") {
+		throw new Error(`[Moon] Style on <${nodeName}> must be an object, received ${typeof value}.`);
+	}
+}
+
+function assertEventHandler(value, key, nodeName) {
+	if (process.env.MOON_ENV === "production") return;
+	if (typeof value !== "function") {
+		throw new Error(`[Moon] Event handler ${key} on <${nodeName}> must be a function.`);
 	}
 }
 
@@ -125,6 +151,7 @@ function viewCreate(node) {
 
 			if (key[0] === "o" && key[1] === "n") {
 				// Set an event listener.
+				assertEventHandler(value, key, nodeName);
 				element[normalizeEventKey(key)] = value;
 			} else {
 				switch (key) {
@@ -138,6 +165,7 @@ function viewCreate(node) {
 					}
 					case "style": {
 						// Set style properties.
+						assertStyleObject(value, nodeName);
 						const elementStyle = element.style;
 						normalizeStyleInline(value);
 
@@ -224,14 +252,15 @@ function viewPatch(nodeOld, nodeOldElement, nodeNew) {
 		const valueOld = nodeOldData[keyNew];
 			const valueNew = nodeNewData[keyNew];
 
-		if (valueOld !== valueNew) {
-			if (keyNew[0] === "o" && keyNew[1] === "n") {
-				// Update an event.
-				nodeOldElement[normalizeEventKey(keyNew)] = valueNew;
-			} else {
-				switch (keyNew) {
-					case "attributes": {
-						// Update attributes.
+			if (valueOld !== valueNew) {
+				if (keyNew[0] === "o" && keyNew[1] === "n") {
+					// Update an event.
+					assertEventHandler(valueNew, keyNew, nodeOld.name);
+					nodeOldElement[normalizeEventKey(keyNew)] = valueNew;
+				} else {
+					switch (keyNew) {
+						case "attributes": {
+							// Update attributes.
 						if (valueOld === undefined) {
 							for (const valueNewKey in valueNew) {
 								nodeOldElement.setAttribute(valueNewKey, valueNew[valueNewKey]);
@@ -259,6 +288,7 @@ function viewPatch(nodeOld, nodeOldElement, nodeNew) {
 					case "style": {
 						// Update style properties.
 						const nodeOldElementStyle = nodeOldElement.style;
+						assertStyleObject(valueNew, nodeOld.name);
 						normalizeStyleInline(valueNew);
 						if (valueOld) normalizeStyleInline(valueOld);
 

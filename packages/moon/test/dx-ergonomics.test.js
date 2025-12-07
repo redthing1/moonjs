@@ -88,4 +88,28 @@ describe("Moon JSX ergonomics", () => {
 			);
 		}).toThrow();
 	});
+
+	test("event handler must be function", () => {
+		const root = document.createElement("div");
+		document.body.appendChild(root);
+		Moon.view.mount(root);
+
+		expect(() => {
+			Moon.m.view = (
+				<Moon.view.components.button onClick="notFn">hi</Moon.view.components.button>
+			);
+		}).toThrow();
+	});
+
+	test("style must be object", () => {
+		const root = document.createElement("div");
+		document.body.appendChild(root);
+		Moon.view.mount(root);
+
+		expect(() => {
+			Moon.m.view = (
+				<Moon.view.components.div style="color:red">hi</Moon.view.components.div>
+			);
+		}).toThrow();
+	});
 });
