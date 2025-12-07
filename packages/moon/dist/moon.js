@@ -172,6 +172,41 @@
 	 * Cache for default property values
 	 */
 	var removeDataPropertyCache = {};
+	var warnings = {
+		unknownProp: Object.create(null),
+		mixedKeys: false
+	};
+	function warnOnce(category, message) {
+		if ("development" === "production") return;
+		if (category === "mixedKeys") {
+			if (warnings.mixedKeys) return;
+			warnings.mixedKeys = true;
+		} else {
+			if (warnings.unknownProp[message]) return;
+			warnings.unknownProp[message] = true;
+		}
+		/* istanbul ignore next */
+		if (typeof console !== "undefined" && console.warn) {
+			console.warn(message);
+		}
+	}
+	function setRef(ref, value) {
+		if (!ref) return;
+		if (typeof ref === "function") {
+			ref(value);
+		} else if (typeof ref === "object") {
+			ref.current = value;
+		}
+	}
+	function isUnknownDomProp(element, key) {
+		if ("development" === "production") return false;
+		if (!element || typeof element !== "object") return false;
+		if (key === "key" || key === "ref") return false;
+		if (key === "attributes" || key === "style" || key === "innerHTML" || key === "focus" || key === "class" || key === "for" || key === "children") return false;
+		if (key[0] === "o" && key[1] === "n") return false;
+		if (key.indexOf("data-") === 0 || key.indexOf("aria-") === 0) return false;
+		return !(key in element);
+	}
 
 	/**
 	 * Modify the prototype of a node to include special Moon view properties.
@@ -247,6 +282,11 @@
 								element.htmlFor = value;
 								break;
 							}
+						case "ref":
+							{
+								setRef(value, element);
+								break;
+							}
 						case "children":
 							{
 								// Recursively append children.
@@ -260,6 +300,9 @@
 							}
 						default:
 							{
+								if (isUnknownDomProp(element, key)) {
+									warnOnce("unknownProp", "[Moon] Unknown DOM prop \"" + key + "\" on <" + nodeName + ">; it will be set as a property.");
+								}
 								// Set a DOM property.
 								element[key] = value;
 							}
@@ -375,13 +418,18 @@
 								// Keyed diff if keys exist on new nodes.
 								var keyed = [];
 								var hasKeys = true;
+								var hasAnyKey = false;
 								for (var i = 0; i < valueNewLength; i++) {
 									var key = valueNew[i].data && valueNew[i].data.key;
 									if (key === undefined) {
 										hasKeys = false;
-										break;
+									} else {
+										hasAnyKey = true;
 									}
 									keyed.push(key);
+								}
+								if (hasAnyKey && !hasKeys) {
+									warnOnce("mixedKeys", "[Moon] Some children have a key and some do not; list diffing will fallback to index order.");
 								}
 								if (valueOld === undefined) {
 									for (var _i = 0; _i < valueNewLength; _i++) {
@@ -483,6 +531,9 @@
 							}
 						default:
 							{
+								if (isUnknownDomProp(nodeOldElement, keyNew)) {
+									warnOnce("unknownProp", "[Moon] Unknown DOM prop \"" + keyNew + "\" on <" + nodeOld.name + ">; it will be set as a property.");
+								}
 								// Update a DOM property.
 								nodeOldElement[keyNew] = valueNew;
 							}
@@ -535,6 +586,12 @@
 								for (var _i9 = 0; _i9 < _valueOldLength; _i9++) {
 									nodeOldElement.removeChild(_nodeOldElementMoonChildren.pop());
 								}
+								break;
+							}
+						case "ref":
+							{
+								// Clear ref on removal.
+								setRef(nodeOldData.ref, null);
 								break;
 							}
 						default:

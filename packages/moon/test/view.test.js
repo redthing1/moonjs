@@ -3,6 +3,7 @@ const m = Moon.m;
 const components = Moon.view.components;
 const testFocusFalse = { focus: false };
 const testInput = <components.input/>;
+const refHolder = { current: null };
 
 let root = document.createElement("span");
 let eventResult;
@@ -56,6 +57,7 @@ function ExecutorTest(props) {
 
 	return (
 		<components.div>
+			<components.input ref={refHolder}/>
 			<components.span children=(list.map((item, index) => <ExecutorTestItem item=item index=index/>))/>
 			<components.span children=(list.map(item => <(
 				item % 2 === 0 ?
@@ -73,7 +75,7 @@ function ExecutorTest(props) {
 				) :
 				<components.text data=""/>
 			)*>
-			<components.input testFocusFalse/>
+			<components.input focus=false/>
 			<(list.length > 0 ?
 				<components.p>Text</components.p> :
 				<components.p/>
@@ -93,8 +95,12 @@ Moon.view.mount(root);
 root = document.body.firstChild;
 
 function verify(list) {
-	const span = root.firstChild;
+	const refInput = root.firstChild;
+	const span = refInput.nextSibling;
 	const span2 = span.nextSibling;
+
+	expect(refHolder.current).toBe(refInput);
+	expect(refInput.tagName).toEqual("INPUT");
 
 	for (let i = 0; i < list.length; i++) {
 		const item = list[i];
