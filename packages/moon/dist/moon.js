@@ -28,26 +28,26 @@
 	 * Global old view.
 	 */
 	var viewOld = null;
+
 	/**
 	 * Global old view element.
 	 */
-
 	var viewOldElement = null;
+
 	/**
 	 * Update the old view.
 	 *
 	 * @param {object} viewOldNew
 	 */
-
 	function viewOldUpdate(viewOldNew) {
 		viewOld = viewOldNew;
 	}
+
 	/**
 	 * Update the old view element.
 	 *
 	 * @param {object} viewOldElementNew
 	 */
-
 	function viewOldElementUpdate(viewOldElementNew) {
 		viewOldElement = viewOldElementNew;
 	}
@@ -55,19 +55,18 @@
 	/**
 	 * Mount to a DOM element.
 	 */
-
 	function mount(element) {
-		viewOldElementUpdate(element); // Capture old data from the element's attributes.
+		viewOldElementUpdate(element);
 
+		// Capture old data from the element's attributes.
 		var viewOldElementAttributes = viewOldElement.attributes;
 		var viewOldData = {};
-
 		for (var i = 0; i < viewOldElementAttributes.length; i++) {
 			var viewOldElementAttribute = viewOldElementAttributes[i];
 			viewOldData[viewOldElementAttribute.name] = viewOldElementAttribute.value;
-		} // Create a node from the root element.
+		}
 
-
+		// Create a node from the root element.
 		viewOldUpdate(new ViewNode(viewOldElement.tagName.toLowerCase(), viewOldData));
 	}
 
@@ -82,7 +81,6 @@
 	 * Each component generates a corresponding view node based on the data it is
 	 * passed as input. This data includes attributes and children.
 	 */
-
 	var components = {
 		node: function node(name) {
 			return function (data) {
@@ -90,17 +88,14 @@
 			};
 		}
 	};
-
-	var _loop = function _loop(i) {
+	var _loop = function _loop() {
 		var name = names[i];
-
 		components[name] = function (data) {
 			return new ViewNode(name, data);
 		};
 	};
-
 	for (var i = 0; i < names.length; i++) {
-		_loop(i);
+		_loop();
 	}
 
 	var view = {
@@ -118,10 +113,8 @@
 		var route = input.route;
 		var routeSegment = "/";
 		var routes = input.routes;
-
 		for (var i = 1; i < route.length; i++) {
 			var routeCharacter = route[i];
-
 			if (routeCharacter === "/") {
 				routes = (routeSegment in routes ? routes[routeSegment] : routes["/*"])[1];
 				routeSegment = "/";
@@ -129,7 +122,6 @@
 				routeSegment += routeCharacter;
 			}
 		}
-
 		return (routeSegment in routes ? routes[routeSegment] : routes["/*"])[0](input);
 	}
 
@@ -142,35 +134,32 @@
 	/**
 	 * Cache for default property values
 	 */
-
 	var removeDataPropertyCache = {};
+
 	/**
 	 * Modify the prototype of a node to include special Moon view properties.
 	 */
-
 	Node.prototype.MoonChildren = null;
+
 	/**
 	 * Creates an element from a node.
 	 *
 	 * @param {object} node
 	 * @returns {object} element
 	 */
-
 	function viewCreate(node) {
 		var nodeName = node.name;
-
 		if (nodeName === "text") {
 			// Create a text node using the text content from the default key.
 			return document.createTextNode(node.data.data);
 		} else {
 			// Create a DOM element.
-			var element = document.createElement(nodeName); // Set data.
+			var element = document.createElement(nodeName);
 
+			// Set data.
 			var nodeData = node.data;
-
 			for (var key in nodeData) {
 				var value = nodeData[key];
-
 				if (key[0] === "o" && key[1] === "n") {
 					// Set an event listener.
 					element[key.toLowerCase()] = value;
@@ -182,22 +171,17 @@
 								for (var valueKey in value) {
 									element.setAttribute(valueKey, value[valueKey]);
 								}
-
 								break;
 							}
-
 						case "style":
 							{
 								// Set style properties.
 								var elementStyle = element.style;
-
 								for (var _valueKey in value) {
 									elementStyle[_valueKey] = value[_valueKey];
 								}
-
 								break;
 							}
-
 						case "focus":
 							{
 								// Set focus if needed. Blur isn't set because it's the
@@ -205,38 +189,31 @@
 								if (value) {
 									element.focus();
 								}
-
 								break;
 							}
-
 						case "class":
 							{
 								// Set a className property.
 								element.className = value;
 								break;
 							}
-
 						case "for":
 							{
 								// Set an htmlFor property.
 								element.htmlFor = value;
 								break;
 							}
-
 						case "children":
 							{
 								// Recursively append children.
 								var elementMoonChildren = element.MoonChildren = [];
-
 								for (var i = 0; i < value.length; i++) {
 									var elementChild = viewCreate(value[i]);
 									elementMoonChildren.push(elementChild);
 									element.appendChild(elementChild);
 								}
-
 								break;
 							}
-
 						default:
 							{
 								// Set a DOM property.
@@ -245,10 +222,10 @@
 					}
 				}
 			}
-
 			return element;
 		}
 	}
+
 	/**
 	 * Patches an old element's data to match a new node, using an old node as
 	 * reference.
@@ -257,17 +234,15 @@
 	 * @param {object} nodeOldElement
 	 * @param {object} nodeNew
 	 */
-
-
 	function viewPatch(nodeOld, nodeOldElement, nodeNew) {
 		var nodeOldData = nodeOld.data;
-		var nodeNewData = nodeNew.data; // First, go through all new data and update all of the existing data to
-		// match.
+		var nodeNewData = nodeNew.data;
 
+		// First, go through all new data and update all of the existing data to
+		// match.
 		for (var keyNew in nodeNewData) {
 			var valueOld = nodeOldData[keyNew];
 			var valueNew = nodeNewData[keyNew];
-
 			if (valueOld !== valueNew) {
 				if (keyNew[0] === "o" && keyNew[1] === "n") {
 					// Update an event.
@@ -284,29 +259,25 @@
 								} else {
 									for (var _valueNewKey in valueNew) {
 										var valueNewValue = valueNew[_valueNewKey];
-
 										if (valueOld[_valueNewKey] !== valueNewValue) {
 											nodeOldElement.setAttribute(_valueNewKey, valueNewValue);
 										}
-									} // Remove attributes from the old value that are not in
+									}
+
+									// Remove attributes from the old value that are not in
 									// the new value.
-
-
 									for (var valueOldKey in valueOld) {
 										if (!(valueOldKey in valueNew)) {
 											nodeOldElement.removeAttribute(valueOldKey);
 										}
 									}
 								}
-
 								break;
 							}
-
 						case "style":
 							{
 								// Update style properties.
 								var nodeOldElementStyle = nodeOldElement.style;
-
 								if (valueOld === undefined) {
 									for (var _valueNewKey2 in valueNew) {
 										nodeOldElementStyle[_valueNewKey2] = valueNew[_valueNewKey2];
@@ -314,24 +285,21 @@
 								} else {
 									for (var _valueNewKey3 in valueNew) {
 										var _valueNewValue = valueNew[_valueNewKey3];
-
 										if (valueOld[_valueNewKey3] !== _valueNewValue) {
 											nodeOldElementStyle[_valueNewKey3] = _valueNewValue;
 										}
-									} // Remove style properties from the old value that are not
+									}
+
+									// Remove style properties from the old value that are not
 									// in the new value.
-
-
 									for (var _valueOldKey in valueOld) {
 										if (!(_valueOldKey in valueNew)) {
 											nodeOldElementStyle[_valueOldKey] = "";
 										}
 									}
 								}
-
 								break;
 							}
-
 						case "focus":
 							{
 								// Update focus/blur.
@@ -340,33 +308,27 @@
 								} else {
 									nodeOldElement.blur();
 								}
-
 								break;
 							}
-
 						case "class":
 							{
 								// Update a className property.
 								nodeOldElement.className = valueNew;
 								break;
 							}
-
 						case "for":
 							{
 								// Update an htmlFor property.
 								nodeOldElement.htmlFor = valueNew;
 								break;
 							}
-
 						case "children":
 							{
 								// Update children.
 								var valueNewLength = valueNew.length;
-
 								if (valueOld === undefined) {
 									// If there were no old children, create new children.
 									var nodeOldElementMoonChildren = nodeOldElement.MoonChildren = [];
-
 									for (var i = 0; i < valueNewLength; i++) {
 										var nodeOldElementChild = viewCreate(valueNew[i]);
 										nodeOldElementMoonChildren.push(nodeOldElementChild);
@@ -374,16 +336,13 @@
 									}
 								} else {
 									var valueOldLength = valueOld.length;
-
 									if (valueOldLength === valueNewLength) {
 										// If the children have the same length then update
 										// both as usual.
 										var _nodeOldElementMoonChildren = nodeOldElement.MoonChildren;
-
 										for (var _i = 0; _i < valueOldLength; _i++) {
 											var valueOldNode = valueOld[_i];
 											var valueNewNode = valueNew[_i];
-
 											if (valueOldNode !== valueNewNode) {
 												if (valueOldNode.name === valueNewNode.name) {
 													viewPatch(valueOldNode, _nodeOldElementMoonChildren[_i], valueNewNode);
@@ -399,23 +358,19 @@
 										// update the corresponding ones and remove the extra
 										// old children.
 										var _nodeOldElementMoonChildren2 = nodeOldElement.MoonChildren;
-
 										for (var _i2 = 0; _i2 < valueNewLength; _i2++) {
 											var _valueOldNode = valueOld[_i2];
 											var _valueNewNode = valueNew[_i2];
-
 											if (_valueOldNode !== _valueNewNode) {
 												if (_valueOldNode.name === _valueNewNode.name) {
 													viewPatch(_valueOldNode, _nodeOldElementMoonChildren2[_i2], _valueNewNode);
 												} else {
 													var _valueOldElementNew = viewCreate(_valueNewNode);
-
 													nodeOldElement.replaceChild(_valueOldElementNew, _nodeOldElementMoonChildren2[_i2]);
 													_nodeOldElementMoonChildren2[_i2] = _valueOldElementNew;
 												}
 											}
 										}
-
 										for (var _i3 = valueNewLength; _i3 < valueOldLength; _i3++) {
 											nodeOldElement.removeChild(_nodeOldElementMoonChildren2.pop());
 										}
@@ -424,36 +379,28 @@
 										// update the corresponding ones and append the extra
 										// new children.
 										var _nodeOldElementMoonChildren3 = nodeOldElement.MoonChildren;
-
 										for (var _i4 = 0; _i4 < valueOldLength; _i4++) {
 											var _valueOldNode2 = valueOld[_i4];
 											var _valueNewNode2 = valueNew[_i4];
-
 											if (_valueOldNode2 !== _valueNewNode2) {
 												if (_valueOldNode2.name === _valueNewNode2.name) {
 													viewPatch(_valueOldNode2, _nodeOldElementMoonChildren3[_i4], _valueNewNode2);
 												} else {
 													var _valueOldElementNew2 = viewCreate(_valueNewNode2);
-
 													nodeOldElement.replaceChild(_valueOldElementNew2, _nodeOldElementMoonChildren3[_i4]);
 													_nodeOldElementMoonChildren3[_i4] = _valueOldElementNew2;
 												}
 											}
 										}
-
 										for (var _i5 = valueOldLength; _i5 < valueNewLength; _i5++) {
 											var _nodeOldElementChild = viewCreate(valueNew[_i5]);
-
 											_nodeOldElementMoonChildren3.push(_nodeOldElementChild);
-
 											nodeOldElement.appendChild(_nodeOldElementChild);
 										}
 									}
 								}
-
 								break;
 							}
-
 						default:
 							{
 								// Update a DOM property.
@@ -462,10 +409,10 @@
 					}
 				}
 			}
-		} // Next, go through all of the old data and remove data that isn't in the
+		}
+
+		// Next, go through all of the old data and remove data that isn't in the
 		// new data.
-
-
 		for (var keyOld in nodeOldData) {
 			if (!(keyOld in nodeNewData)) {
 				if (keyOld[0] === "o" && keyOld[1] === "n") {
@@ -477,48 +424,39 @@
 							{
 								// Remove attributes.
 								var _valueOld = nodeOldData.attributes;
-
 								for (var _valueOldKey2 in _valueOld) {
 									nodeOldElement.removeAttribute(_valueOldKey2);
 								}
-
 								break;
 							}
-
 						case "focus":
 							{
 								// Remove focus.
 								nodeOldElement.blur();
 								break;
 							}
-
 						case "class":
 							{
 								// Remove a className property.
 								nodeOldElement.className = "";
 								break;
 							}
-
 						case "for":
 							{
 								// Remove an htmlFor property.
 								nodeOldElement.htmlFor = "";
 								break;
 							}
-
 						case "children":
 							{
 								// Remove children.
 								var _valueOldLength = nodeOldData.children.length;
 								var _nodeOldElementMoonChildren4 = nodeOldElement.MoonChildren;
-
 								for (var _i6 = 0; _i6 < _valueOldLength; _i6++) {
 									nodeOldElement.removeChild(_nodeOldElementMoonChildren4.pop());
 								}
-
 								break;
 							}
-
 						default:
 							{
 								// Remove a DOM property.
@@ -530,6 +468,7 @@
 			}
 		}
 	}
+
 	/**
 	 * The view transformer renderer is responsible for updating the DOM and
 	 * rendering views. The patch consists of walking the new tree and finding
@@ -549,8 +488,6 @@
 	 *
 	 * @param {object} viewNew
 	 */
-
-
 	var view$1 = {
 		set: function set(viewNew) {
 			// When given a new view, patch the old element to match the new node using
@@ -560,15 +497,17 @@
 				viewPatch(viewOld, viewOldElement, viewNew);
 			} else {
 				// If they have different names, create a new old view element.
-				var viewOldElementNew = viewCreate(viewNew); // Manipulate the DOM to replace the old view.
+				var viewOldElementNew = viewCreate(viewNew);
 
-				viewOldElement.parentNode.replaceChild(viewOldElementNew, viewOldElement); // Update the reference to the old view element.
+				// Manipulate the DOM to replace the old view.
+				viewOldElement.parentNode.replaceChild(viewOldElementNew, viewOldElement);
 
+				// Update the reference to the old view element.
 				viewOldElementUpdate(viewOldElementNew);
-			} // Store the new view as the old view to be used as reference during a
+			}
+
+			// Store the new view as the old view to be used as reference during a
 			// patch.
-
-
 			viewOldUpdate(viewNew);
 		}
 	};
@@ -589,12 +528,10 @@
 		set: function set(localStorageNew) {
 			for (var keyNew in localStorageNew) {
 				var valueNew = localStorageNew[keyNew];
-
 				if (localStorage[keyNew] !== valueNew) {
 					localStorage[keyNew] = valueNew;
 				}
 			}
-
 			for (var keyOld in localStorage) {
 				if (!(keyOld in localStorageNew)) {
 					delete localStorage[keyOld];
@@ -609,46 +546,49 @@
 	var headerRE = /^([^:]+):\s*([^]*?)\s*$/gm;
 	var http = {
 		set: function set(request) {
-			var xhr = new XMLHttpRequest(); // Handle response types.
+			var xhr = new XMLHttpRequest();
 
-			xhr.responseType = "responseType" in request ? request.responseType : "text"; // Handle load event.
+			// Handle response types.
+			xhr.responseType = "responseType" in request ? request.responseType : "text";
 
+			// Handle load event.
 			if ("onLoad" in request) {
 				xhr.onload = function () {
 					var responseHeaders = {};
 					var responseHeadersText = xhr.getAllResponseHeaders();
-					var responseHeader; // Parse headers to object.
+					var responseHeader;
 
+					// Parse headers to object.
 					while ((responseHeader = headerRE.exec(responseHeadersText)) !== null) {
 						responseHeaders[responseHeader[1]] = responseHeader[2];
-					} // Run load event handler.
+					}
 
-
+					// Run load event handler.
 					request.onLoad({
 						status: xhr.status,
 						headers: responseHeaders,
 						body: xhr.response
 					});
 				};
-			} // Handle error event.
+			}
 
-
+			// Handle error event.
 			if ("onError" in request) {
 				xhr.onerror = request.onError;
-			} // Open the request with the given method and URL.
+			}
 
+			// Open the request with the given method and URL.
+			xhr.open("method" in request ? request.method : "GET", request.url);
 
-			xhr.open("method" in request ? request.method : "GET", request.url); // Set request headers.
-
+			// Set request headers.
 			if ("headers" in request) {
 				var requestHeaders = request.headers;
-
 				for (var requestHeader in requestHeaders) {
 					xhr.setRequestHeader(requestHeader, requestHeaders[requestHeader]);
 				}
-			} // Send the request with the given body.
+			}
 
-
+			// Send the request with the given body.
 			xhr.send("body" in request ? request.body : null);
 		}
 	};

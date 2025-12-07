@@ -1,3 +1,5 @@
+Docs are vendored under `docs/` (from `gh-pages/src`) for offline reference. To use Moon entirely in-browser with no npm/CDN, vendor `packages/moon/dist/moon.min.js` (or also `packages/moon-browser/dist/moon-browser.min.js` if you want `<script type="text/moon">` compilation) and load via a plain `<script src="/path/to/moon.min.js"></script>`.
+
 <p align="center">
 	<a href="https://moonjs.org" target="_blank">
 		<img width="125" src="https://raw.githubusercontent.com/kbrsh/moon/gh-pages/img/logo.png">

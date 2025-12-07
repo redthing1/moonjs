@@ -11,20 +11,19 @@
 	 * Matches an identifier character.
 	 */
 	var identifierRE = /[$\w.]/;
+
 	/**
 	 * Stores an error message, a slice of tokens associated with the error, and a
 	 * related error for later reporting.
 	 */
-
 	function ParseError(expected, index) {
 		this.expected = expected;
 		this.index = index;
 	}
+
 	/**
 	 * Parser combinators
 	 */
-
-
 	var parser = {
 		type: function type(_type, parse) {
 			return function (input, index) {
@@ -39,8 +38,7 @@
 			// EOF errors should be unreachable because the expression parser should
 			// never error after looking ahead one character and stop consuming input
 			// before reaching the end.
-			return index === input.length ? ["EOF", index] :
-			/* istanbul ignore next */
+			return index === input.length ? ["EOF", index] : /* istanbul ignore next */
 			new ParseError("EOF", index);
 		},
 		any: function any(input, index) {
@@ -69,12 +67,10 @@
 				if (index < input.length) {
 					for (var i = 0; i < strings.length; i++) {
 						var string = strings[i];
-
 						if (input.slice(index, index + string.length) === string) {
 							return new ParseError("not \"" + string + "\"", index);
 						}
 					}
-
 					return [input[index], index + 1];
 				} else {
 					return new ParseError("not " + strings.map(JSON.stringify).join(", "), index);
@@ -84,7 +80,6 @@
 		or: function or(parse1, parse2) {
 			return function (input, index) {
 				var output1 = parse1(input, index);
-
 				if (output1 instanceof ParseError && output1.index === index) {
 					// If the first parser has an error and consumes no input, then try
 					// the second parser.
@@ -97,7 +92,6 @@
 		and: function and(parse1, parse2) {
 			return function (input, index) {
 				var output1 = parse1(input, index);
-
 				if (output1 instanceof ParseError) {
 					return output1;
 				} else {
@@ -109,10 +103,8 @@
 		sequence: function sequence(parses) {
 			return function (input, index) {
 				var values = [];
-
 				for (var i = 0; i < parses.length; i++) {
 					var output = parses[i](input, index);
-
 					if (output instanceof ParseError) {
 						return output;
 					} else {
@@ -120,17 +112,14 @@
 						index = output[1];
 					}
 				}
-
 				return [values, index];
 			};
 		},
 		alternates: function alternates(parses) {
 			return function (input, index) {
 				var alternatesError = new ParseError("alternates", -1);
-
 				for (var i = 0; i < parses.length; i++) {
 					var output = parses[i](input, index);
-
 					if (output instanceof ParseError && output.index === index) {
 						if (output.index > alternatesError.index) {
 							alternatesError = output;
@@ -139,7 +128,6 @@
 						return output;
 					}
 				}
-
 				return alternatesError;
 			};
 		},
@@ -147,12 +135,10 @@
 			return function (input, index) {
 				var values = [];
 				var output;
-
 				while (!((output = parse(input, index)) instanceof ParseError)) {
 					values.push(output[0]);
 					index = output[1];
 				}
-
 				if (output.index === index) {
 					return [values, index];
 				} else {
@@ -164,19 +150,15 @@
 			return function (input, index) {
 				var values = [];
 				var output = parse(input, index);
-
 				if (output instanceof ParseError) {
 					return output;
 				}
-
 				values.push(output[0]);
 				index = output[1];
-
 				while (!((output = parse(input, index)) instanceof ParseError)) {
 					values.push(output[0]);
 					index = output[1];
 				}
-
 				if (output.index === index) {
 					return [values, index];
 				} else {
@@ -187,19 +169,17 @@
 		"try": function _try(parse) {
 			return function (input, index) {
 				var output = parse(input, index);
-
 				if (output instanceof ParseError) {
 					output.index = index;
 				}
-
 				return output;
 			};
 		}
 	};
+
 	/**
 	 * Moon View Language Grammar
 	 */
-
 	var grammar = {
 		comment: parser.type("comment", parser.sequence([parser.character("#"), parser.many(parser.or(parser.and(parser.character("\\"), parser.any), parser.not(["#"]))), parser.character("#")])),
 		separator: function separator(input, index) {
@@ -225,12 +205,17 @@
 			return parser.type("nodeDataChildren", parser.sequence([parser.character("<"), grammar.separator, grammar.value, grammar.separator, grammar.attributes, parser.character(">"), parser.many(parser.alternates([parser["try"](grammar.node), parser["try"](grammar.nodeData), parser["try"](grammar.nodeDataChildren), grammar.text, grammar.interpolation])), parser.string("</"), parser.many(parser.not([">"])), parser.character(">")]))(input, index);
 		},
 		expression: function expression(input, index) {
-			return parser.many(parser.alternates([// Single line comment
-			parser.sequence([parser.string("//"), parser.many(parser.not(["\n"]))]), // Multi-line comment
-			parser.sequence([parser.string("/*"), parser.many(parser.not(["*/"])), parser.string("*/")]), // Regular expression
-			parser["try"](parser.sequence([parser.character("/"), parser.many1(parser.or(parser.and(parser.character("\\"), parser.not(["\n"])), parser.not(["/", "\n"]))), parser.character("/")])), grammar.comment, grammar.value, parser["try"](grammar.node), parser["try"](grammar.nodeData), parser["try"](grammar.nodeDataChildren), // Allow failed regular expression or view parses to be interpreted as
+			return parser.many(parser.alternates([
+			// Single line comment
+			parser.sequence([parser.string("//"), parser.many(parser.not(["\n"]))]),
+			// Multi-line comment
+			parser.sequence([parser.string("/*"), parser.many(parser.not(["*/"])), parser.string("*/")]),
+			// Regular expression
+			parser["try"](parser.sequence([parser.character("/"), parser.many1(parser.or(parser.and(parser.character("\\"), parser.not(["\n"])), parser.not(["/", "\n"]))), parser.character("/")])), grammar.comment, grammar.value, parser["try"](grammar.node), parser["try"](grammar.nodeData), parser["try"](grammar.nodeDataChildren),
+			// Allow failed regular expression or view parses to be interpreted as
 			// operators.
-			parser.character("/"), parser.character("<"), // Anything up to a comment, regular expression, string, parenthetical,
+			parser.character("/"), parser.character("<"),
+			// Anything up to a comment, regular expression, string, parenthetical,
 			// array, object, or view. Only matches to the opening bracket of a view
 			// because the view parsers do not require an expression to finish
 			// parsing before consuming the closing bracket. Parentheticals, arrays,
@@ -242,6 +227,7 @@
 			return parser.and(grammar.expression, parser.EOF)(input, index);
 		}
 	};
+
 	/**
 	 * Parser
 	 *
@@ -254,7 +240,6 @@
 	 * @param {string} input
 	 * @returns {object} abstract syntax tree and end index or ParseError
 	 */
-
 	function parse(input) {
 		return grammar.main(input, 0);
 	}
@@ -263,14 +248,15 @@
 	 * HTML tag names
 	 */
 	var names = ["a", "abbr", "acronym", "address", "applet", "area", "article", "aside", "audio", "b", "base", "basefont", "bdi", "bdo", "bgsound", "big", "blink", "blockquote", "body", "br", "button", "canvas", "caption", "center", "cite", "code", "col", "colgroup", "command", "content", "data", "datalist", "dd", "del", "details", "dfn", "dialog", "dir", "div", "dl", "dt", "element", "em", "embed", "fieldset", "figcaption", "figure", "font", "footer", "form", "frame", "frameset", "h1", "h2", "h3", "h4", "h5", "h6", "head", "header", "hgroup", "hr", "html", "i", "iframe", "image", "img", "input", "ins", "isindex", "kbd", "keygen", "label", "legend", "li", "link", "listing", "main", "map", "mark", "marquee", "math", "menu", "menuitem", "meta", "meter", "multicol", "nav", "nextid", "nobr", "noembed", "noframes", "noscript", "object", "ol", "optgroup", "option", "output", "p", "param", "picture", "plaintext", "pre", "progress", "q", "rb", "rbc", "rp", "rt", "rtc", "ruby", "s", "samp", "script", "section", "select", "shadow", "slot", "small", "source", "spacer", "span", "strike", "strong", "style", "sub", "summary", "sup", "svg", "table", "tbody", "td", "template", "text", "textarea", "tfoot", "th", "thead", "time", "title", "tr", "track", "tt", "u", "ul", "var", "video", "wbr", "xmp"];
+
 	/**
 	 * Logs an error message to the console.
 	 * @param {string} message
 	 */
-
 	function error(message) {
 		console.error("[Moon] ERROR: " + message);
 	}
+
 	/**
 	 * Pads a string with spaces on the left to match a certain length.
 	 *
@@ -278,38 +264,35 @@
 	 * @param {number} length
 	 * @returns {string} padded string
 	 */
-
 	function pad(string, length) {
 		var remaining = length - string.length;
-
 		for (var i = 0; i < remaining; i++) {
 			string = " " + string;
 		}
-
 		return string;
 	}
 
 	/**
 	 * Matches whitespace.
 	 */
-
 	var whitespaceRE = /^\s+$/;
+
 	/**
 	 * Matches unescaped special characters in text.
 	 */
-
 	var textSpecialRE = /(^|[^\\])("|\n)/g;
+
 	/**
 	 * Generates a name for a function call.
 	 *
 	 * @param {string} nameTree
 	 * @returns {string} function name
 	 */
-
 	function generateName(nameTree) {
 		var name = generate(nameTree);
 		return names.indexOf(name) === -1 ? name : "Moon.view.components." + name;
 	}
+
 	/**
 	 * Generator
 	 *
@@ -320,20 +303,15 @@
 	 * @param {object} tree
 	 * @returns {string} generator result
 	 */
-
-
 	function generate(tree) {
 		var type = tree.type;
-
 		if (typeof tree === "string") {
 			return tree;
 		} else if (Array.isArray(tree)) {
 			var output = "";
-
 			for (var i = 0; i < tree.length; i++) {
 				output += generate(tree[i]);
 			}
-
 			return output;
 		} else if (type === "comment") {
 			return "/*" + generate(tree.value[1]) + "*/";
@@ -341,22 +319,21 @@
 			var value = tree.value;
 			var _output = "";
 			var separator = "";
-
 			for (var _i = 0; _i < value.length; _i++) {
 				var pair = value[_i];
 				_output += separator + "\"" + generate(pair[0]) + "\":" + generate(pair[2]) + generate(pair[3]);
 				separator = ",";
 			}
-
 			return {
 				output: _output,
 				separator: separator
 			};
 		} else if (type === "text") {
 			var textGenerated = generate(tree.value);
-			var textGeneratedIsWhitespace = whitespaceRE.test(textGenerated) && textGenerated.indexOf("\n") !== -1; // Text that is only whitespace with at least one newline is ignored and
-			// added only to preserve newlines in the generated code.
+			var textGeneratedIsWhitespace = whitespaceRE.test(textGenerated) && textGenerated.indexOf("\n") !== -1;
 
+			// Text that is only whitespace with at least one newline is ignored and
+			// added only to preserve newlines in the generated code.
 			return {
 				output: textGeneratedIsWhitespace ? textGenerated : "Moon.view.components.text({data:\"" + textGenerated.replace(textSpecialRE, function (match, character, characterSpecial) {
 					return character + (characterSpecial === "\"" ? "\\\"" : "\\n\\\n");
@@ -380,23 +357,18 @@
 			// Data and children nodes represent calling a function with a data
 			// object using attribute syntax and children.
 			var _value3 = tree.value;
-
 			var _data = generate(_value3[4]);
-
 			var children = _value3[6];
 			var childrenLength = children.length;
 			var childrenGenerated;
-
 			if (childrenLength === 0) {
 				childrenGenerated = "";
 			} else {
 				var _separator = "";
 				childrenGenerated = _data.separator + "children:[";
-
 				for (var _i2 = 0; _i2 < childrenLength; _i2++) {
 					var child = children[_i2];
 					var childGenerated = generate(child);
-
 					if (child.type === "text") {
 						if (childGenerated.isWhitespace) {
 							childrenGenerated += childGenerated.output;
@@ -409,10 +381,8 @@
 						_separator = ",";
 					}
 				}
-
 				childrenGenerated += "]";
 			}
-
 			return "" + generate(_value3[1]) + generateName(_value3[2]) + generate(_value3[3]) + "({" + _data.output + childrenGenerated + "})";
 		}
 	}
@@ -424,20 +394,16 @@
 	 * @param {number} index
 	 * @returns {string} formatted lines
 	 */
-
 	function format(input, index) {
 		// Pad input to account for indexes after the end.
 		for (var i = input.length; i <= index; i++) {
 			input += " ";
 		}
-
 		var lines = input.split("\n");
 		var lineNumber = 1;
 		var columnNumber = 1;
-
 		for (var _i = 0; _i < input.length; _i++) {
 			var character = input[_i];
-
 			if (_i === index) {
 				var lineNumberPrevious = lineNumber - 1;
 				var lineNumberNext = lineNumber + 1;
@@ -446,20 +412,15 @@
 				var line = lines[lineNumber - 1];
 				var lineNext = lines[lineNumberNext - 1];
 				var formatted = "";
-
 				if (linePrevious !== undefined) {
 					formatted += pad(lineNumberPrevious + "| ", lineNumberLength) + linePrevious + "\n";
 				}
-
 				formatted += pad(lineNumber + "| ", lineNumberLength) + line + "\n" + pad("| ", lineNumberLength) + pad("^", columnNumber);
-
 				if (lineNext !== undefined) {
 					formatted += "\n" + pad(lineNumberNext + "| ", lineNumberLength) + lineNext;
 				}
-
 				return formatted;
 			}
-
 			if (character === "\n") {
 				lineNumber += 1;
 				columnNumber = 1;
@@ -475,31 +436,26 @@
 	 * @param {string} input
 	 * @returns {string} file code
 	 */
-
 	function compile(input) {
 		var parseOutput = parse(input);
-
 		if ("development" === "development" && parseOutput.constructor.name === "ParseError") {
 			error("Invalid input to parser.\n\nAttempted to parse input.\n\nExpected " + parseOutput.expected + ".\n\nReceived:\n\n" + format(input, parseOutput.index));
 		}
-
 		return generate(parseOutput[0][0]);
 	}
 
 	/**
 	 * Script elements
 	 */
-
 	var scripts = [];
+
 	/**
 	 * Load scripts in the order they appear.
 	 */
-
 	function load() {
 		if (scripts.length !== 0) {
 			var script = scripts.shift();
 			var src = script.src;
-
 			if (src.length === 0) {
 				var scriptNew = document.createElement("script");
 				scriptNew.type = "text/javascript";
@@ -509,43 +465,34 @@
 			} else {
 				var xhr = new XMLHttpRequest();
 				xhr.responseType = "text";
-
 				xhr.onload = function () {
 					if (xhr.status === 0 || xhr.status === 200) {
 						var _scriptNew = document.createElement("script");
-
 						_scriptNew.type = "text/javascript";
 						_scriptNew.text = compile(xhr.response);
 						script.parentNode.replaceChild(_scriptNew, script);
 					} else {
 						error("Invalid script HTTP response.\n\nAttempted to download script:\n\t" + src + "\n\nReceived error HTTP status code:\n\t" + xhr.status + "\n\nExpected OK HTTP status code 0 or 200.");
 					}
-
 					load();
 				};
-
 				xhr.onerror = function () {
 					error("Failed script HTTP request.\n\nAttempted to download script:\n\t" + src + "\n\nReceived error.\n\nExpected successful HTTP request.");
 					load();
 				};
-
 				xhr.open("GET", src, true);
 				xhr.send(null);
 			}
 		}
 	}
-
 	document.addEventListener("DOMContentLoaded", function () {
 		var scriptsAll = document.querySelectorAll("script");
-
 		for (var i = 0; i < scriptsAll.length; i++) {
 			var script = scriptsAll[i];
-
 			if (script.type === "text/moon") {
 				scripts.push(script);
 			}
 		}
-
 		load();
 	});
 
