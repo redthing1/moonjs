@@ -345,25 +345,35 @@
 			return "/*" + generate(tree.value[1]) + "*/";
 		} else if (type === "attributes") {
 			var value = tree.value;
-			var _output = "";
-			var separator = "";
+			var spreads = [];
+			var entries = [];
 			for (var _i = 0; _i < value.length; _i++) {
 				var pair = value[_i];
-				var attributeName = normalizeAttributeName(generate(unwrapBraces(pair[0])));
+				var rawName = generate(unwrapBraces(pair[0]));
+				var attributeName = normalizeAttributeName(rawName);
 				var pairValue = pair[1];
 				if (attributeName.slice(0, 3) === "...") {
 					var spreadExpr = attributeName.slice(3) || generate(unwrapBraces(pairValue && pairValue[1] || []));
-					_output += separator + "..." + spreadExpr + generate(pair[2]);
+					spreads.push(spreadExpr);
 				} else {
 					var attributeValue = pairValue === null ? "true" : generate(unwrapBraces(pairValue[1]));
-					_output += separator + "\"" + attributeName + "\":" + attributeValue + generate(pair[2]);
+					entries.push("\"" + attributeName + "\":" + attributeValue);
 				}
-				separator = ",";
 			}
-			return {
-				output: _output,
-				separator: separator
-			};
+			if (spreads.length === 0) {
+				return {
+					output: entries.join(","),
+					separator: entries.length === 0 ? "" : ",",
+					isExpression: false
+				};
+			} else {
+				var propsObject = entries.length === 0 ? "{}" : "{" + entries.join(",") + "}";
+				return {
+					output: "Object.assign({}, " + spreads.join(",") + (entries.length ? ", " + propsObject : "") + ")",
+					separator: entries.length || spreads.length ? "," : "",
+					isExpression: true
+				};
+			}
 		} else if (type === "text") {
 			var textGenerated = generate(tree.value);
 			var textGeneratedIsWhitespace = whitespaceRE.test(textGenerated) && textGenerated.indexOf("\n") !== -1;
@@ -388,7 +398,7 @@
 			var _value2 = tree.value;
 			var data = _value2[4];
 			var dataGenerated = generate(data);
-			return "" + generate(_value2[1]) + generateName(_value2[2]) + generate(_value2[3]) + "(" + (data.type === "attributes" ? "{" + dataGenerated.output + "}" : dataGenerated) + ")";
+			return "" + generate(_value2[1]) + generateName(_value2[2]) + generate(_value2[3]) + "(" + (data.type === "attributes" ? dataGenerated.isExpression ? dataGenerated.output : "{" + dataGenerated.output + "}" : dataGenerated) + ")";
 		} else if (type === "nodeDataChildren") {
 			// Data and children nodes represent calling a function with a data
 			// object using attribute syntax and children.
@@ -400,7 +410,7 @@
 			if (childrenLength === 0) {
 				childrenGenerated = "";
 			} else {
-				var _separator = "";
+				var separator = "";
 				childrenGenerated = _data.separator + "children:[";
 				for (var _i2 = 0; _i2 < childrenLength; _i2++) {
 					var child = children[_i2];
@@ -409,12 +419,12 @@
 						if (childGenerated.isWhitespace) {
 							childrenGenerated += childGenerated.output;
 						} else {
-							childrenGenerated += _separator + childGenerated.output;
-							_separator = ",";
+							childrenGenerated += separator + childGenerated.output;
+							separator = ",";
 						}
 					} else {
-						childrenGenerated += _separator + childGenerated;
-						_separator = ",";
+						childrenGenerated += separator + childGenerated;
+						separator = ",";
 					}
 				}
 				childrenGenerated += "]";

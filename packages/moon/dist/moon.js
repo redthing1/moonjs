@@ -155,6 +155,7 @@
 		} else {
 			// Create a DOM element.
 			var element = document.createElement(nodeName);
+			element.MoonChildren = element.MoonChildren || [];
 
 			// Set data.
 			var nodeData = node.data;
@@ -180,6 +181,12 @@
 								for (var _valueKey in value) {
 									elementStyle[_valueKey] = value[_valueKey];
 								}
+								break;
+							}
+						case "innerHTML":
+							{
+								// Set raw HTML content.
+								element.innerHTML = value;
 								break;
 							}
 						case "focus":
@@ -325,77 +332,113 @@
 						case "children":
 							{
 								// Update children.
+								var nodeOldElementMoonChildren = nodeOldElement.MoonChildren || [];
 								var valueNewLength = valueNew.length;
-								if (valueOld === undefined) {
-									// If there were no old children, create new children.
-									var nodeOldElementMoonChildren = nodeOldElement.MoonChildren = [];
-									for (var i = 0; i < valueNewLength; i++) {
-										var nodeOldElementChild = viewCreate(valueNew[i]);
-										nodeOldElementMoonChildren.push(nodeOldElementChild);
-										nodeOldElement.appendChild(nodeOldElementChild);
+
+								// Keyed diff if keys exist on new nodes.
+								var keyed = [];
+								var hasKeys = true;
+								for (var i = 0; i < valueNewLength; i++) {
+									var key = valueNew[i].data && valueNew[i].data.key;
+									if (key === undefined) {
+										hasKeys = false;
+										break;
 									}
+									keyed.push(key);
+								}
+								if (valueOld === undefined) {
+									for (var _i = 0; _i < valueNewLength; _i++) {
+										var childEl = viewCreate(valueNew[_i]);
+										nodeOldElementMoonChildren.push(childEl);
+										nodeOldElement.appendChild(childEl);
+									}
+									nodeOldElement.MoonChildren = nodeOldElementMoonChildren;
+								} else if (hasKeys) {
+									var oldKeyMap = {};
+									for (var _i2 = 0; _i2 < valueOld.length; _i2++) {
+										var _key = valueOld[_i2].data && valueOld[_i2].data.key;
+										if (_key !== undefined) {
+											oldKeyMap[_key] = {
+												node: valueOld[_i2],
+												el: nodeOldElementMoonChildren[_i2],
+												used: false
+											};
+										}
+									}
+									var newChildrenEls = [];
+									for (var _i3 = 0; _i3 < valueNewLength; _i3++) {
+										var newNode = valueNew[_i3];
+										var _key2 = keyed[_i3];
+										var existing = oldKeyMap[_key2];
+										if (existing) {
+											viewPatch(existing.node, existing.el, newNode);
+											existing.used = true;
+											newChildrenEls.push(existing.el);
+										} else {
+											var _childEl = viewCreate(newNode);
+											newChildrenEls.push(_childEl);
+											nodeOldElement.appendChild(_childEl);
+										}
+									}
+
+									// Remove unused old keyed elements.
+									for (var _key3 in oldKeyMap) {
+										if (!oldKeyMap[_key3].used) {
+											nodeOldElement.removeChild(oldKeyMap[_key3].el);
+										}
+									}
+									nodeOldElement.MoonChildren = newChildrenEls;
 								} else {
 									var valueOldLength = valueOld.length;
 									if (valueOldLength === valueNewLength) {
-										// If the children have the same length then update
-										// both as usual.
-										var _nodeOldElementMoonChildren = nodeOldElement.MoonChildren;
-										for (var _i = 0; _i < valueOldLength; _i++) {
-											var valueOldNode = valueOld[_i];
-											var valueNewNode = valueNew[_i];
+										for (var _i4 = 0; _i4 < valueOldLength; _i4++) {
+											var valueOldNode = valueOld[_i4];
+											var valueNewNode = valueNew[_i4];
 											if (valueOldNode !== valueNewNode) {
 												if (valueOldNode.name === valueNewNode.name) {
-													viewPatch(valueOldNode, _nodeOldElementMoonChildren[_i], valueNewNode);
+													viewPatch(valueOldNode, nodeOldElementMoonChildren[_i4], valueNewNode);
 												} else {
 													var valueOldElementNew = viewCreate(valueNewNode);
-													nodeOldElement.replaceChild(valueOldElementNew, _nodeOldElementMoonChildren[_i]);
-													_nodeOldElementMoonChildren[_i] = valueOldElementNew;
+													nodeOldElement.replaceChild(valueOldElementNew, nodeOldElementMoonChildren[_i4]);
+													nodeOldElementMoonChildren[_i4] = valueOldElementNew;
 												}
 											}
 										}
 									} else if (valueOldLength > valueNewLength) {
-										// If there are more old children than new children,
-										// update the corresponding ones and remove the extra
-										// old children.
-										var _nodeOldElementMoonChildren2 = nodeOldElement.MoonChildren;
-										for (var _i2 = 0; _i2 < valueNewLength; _i2++) {
-											var _valueOldNode = valueOld[_i2];
-											var _valueNewNode = valueNew[_i2];
+										for (var _i5 = 0; _i5 < valueNewLength; _i5++) {
+											var _valueOldNode = valueOld[_i5];
+											var _valueNewNode = valueNew[_i5];
 											if (_valueOldNode !== _valueNewNode) {
 												if (_valueOldNode.name === _valueNewNode.name) {
-													viewPatch(_valueOldNode, _nodeOldElementMoonChildren2[_i2], _valueNewNode);
+													viewPatch(_valueOldNode, nodeOldElementMoonChildren[_i5], _valueNewNode);
 												} else {
 													var _valueOldElementNew = viewCreate(_valueNewNode);
-													nodeOldElement.replaceChild(_valueOldElementNew, _nodeOldElementMoonChildren2[_i2]);
-													_nodeOldElementMoonChildren2[_i2] = _valueOldElementNew;
+													nodeOldElement.replaceChild(_valueOldElementNew, nodeOldElementMoonChildren[_i5]);
+													nodeOldElementMoonChildren[_i5] = _valueOldElementNew;
 												}
 											}
 										}
-										for (var _i3 = valueNewLength; _i3 < valueOldLength; _i3++) {
-											nodeOldElement.removeChild(_nodeOldElementMoonChildren2.pop());
+										for (var _i6 = valueNewLength; _i6 < valueOldLength; _i6++) {
+											nodeOldElement.removeChild(nodeOldElementMoonChildren.pop());
 										}
 									} else {
-										// If there are more new children than old children,
-										// update the corresponding ones and append the extra
-										// new children.
-										var _nodeOldElementMoonChildren3 = nodeOldElement.MoonChildren;
-										for (var _i4 = 0; _i4 < valueOldLength; _i4++) {
-											var _valueOldNode2 = valueOld[_i4];
-											var _valueNewNode2 = valueNew[_i4];
+										for (var _i7 = 0; _i7 < valueOldLength; _i7++) {
+											var _valueOldNode2 = valueOld[_i7];
+											var _valueNewNode2 = valueNew[_i7];
 											if (_valueOldNode2 !== _valueNewNode2) {
 												if (_valueOldNode2.name === _valueNewNode2.name) {
-													viewPatch(_valueOldNode2, _nodeOldElementMoonChildren3[_i4], _valueNewNode2);
+													viewPatch(_valueOldNode2, nodeOldElementMoonChildren[_i7], _valueNewNode2);
 												} else {
 													var _valueOldElementNew2 = viewCreate(_valueNewNode2);
-													nodeOldElement.replaceChild(_valueOldElementNew2, _nodeOldElementMoonChildren3[_i4]);
-													_nodeOldElementMoonChildren3[_i4] = _valueOldElementNew2;
+													nodeOldElement.replaceChild(_valueOldElementNew2, nodeOldElementMoonChildren[_i7]);
+													nodeOldElementMoonChildren[_i7] = _valueOldElementNew2;
 												}
 											}
 										}
-										for (var _i5 = valueOldLength; _i5 < valueNewLength; _i5++) {
-											var _nodeOldElementChild = viewCreate(valueNew[_i5]);
-											_nodeOldElementMoonChildren3.push(_nodeOldElementChild);
-											nodeOldElement.appendChild(_nodeOldElementChild);
+										for (var _i8 = valueOldLength; _i8 < valueNewLength; _i8++) {
+											var nodeOldElementChild = viewCreate(valueNew[_i8]);
+											nodeOldElementMoonChildren.push(nodeOldElementChild);
+											nodeOldElement.appendChild(nodeOldElementChild);
 										}
 									}
 								}
@@ -451,9 +494,9 @@
 							{
 								// Remove children.
 								var _valueOldLength = nodeOldData.children.length;
-								var _nodeOldElementMoonChildren4 = nodeOldElement.MoonChildren;
-								for (var _i6 = 0; _i6 < _valueOldLength; _i6++) {
-									nodeOldElement.removeChild(_nodeOldElementMoonChildren4.pop());
+								var _nodeOldElementMoonChildren = nodeOldElement.MoonChildren || [];
+								for (var _i9 = 0; _i9 < _valueOldLength; _i9++) {
+									nodeOldElement.removeChild(_nodeOldElementMoonChildren.pop());
 								}
 								break;
 							}

@@ -73,29 +73,40 @@ export default function generate(tree) {
 		return `/*${generate(tree.value[1])}*/`;
 	} else if (type === "attributes") {
 		const value = tree.value;
-		let output = "";
-		let separator = "";
+		const spreads = [];
+		const entries = [];
 
 		for (let i = 0; i < value.length; i++) {
 			const pair = value[i];
-			const attributeName = normalizeAttributeName(generate(unwrapBraces(pair[0])));
+			const rawName = generate(unwrapBraces(pair[0]));
+			const attributeName = normalizeAttributeName(rawName);
 			const pairValue = pair[1];
+
 			if (attributeName.slice(0, 3) === "...") {
 				const spreadExpr = attributeName.slice(3) || generate(unwrapBraces(pairValue && pairValue[1] || []));
-				output += `${separator}...${spreadExpr}${generate(pair[2])}`;
+				spreads.push(spreadExpr);
 			} else {
 				const attributeValue = pairValue === null ?
 					"true" :
 					generate(unwrapBraces(pairValue[1]));
-				output += `${separator}"${attributeName}":${attributeValue}${generate(pair[2])}`;
+				entries.push(`"${attributeName}":${attributeValue}`);
 			}
-			separator = ",";
 		}
 
-		return {
-			output,
-			separator
-		};
+		if (spreads.length === 0) {
+			return {
+				output: entries.join(","),
+				separator: entries.length === 0 ? "" : ",",
+				isExpression: false
+			};
+		} else {
+			const propsObject = entries.length === 0 ? "{}" : `{${entries.join(",")}}`;
+			return {
+				output: `Object.assign({}, ${spreads.join(",")}${entries.length ? `, ${propsObject}` : ""})`,
+				separator: entries.length || spreads.length ? "," : "",
+				isExpression: true
+			};
+		}
 	} else if (type === "text") {
 		const textGenerated = generate(tree.value);
 		const textGeneratedIsWhitespace = whitespaceRE.test(textGenerated) && textGenerated.indexOf("\n") !== -1;
@@ -126,9 +137,11 @@ export default function generate(tree) {
 		const data = value[4];
 		const dataGenerated = generate(data);
 
-		return `${generate(value[1])}${generateName(value[2])}${generate(value[3])}(${
-			data.type === "attributes" ? `{${dataGenerated.output}}` : dataGenerated
-		})`;
+	return `${generate(value[1])}${generateName(value[2])}${generate(value[3])}(${
+		data.type === "attributes" ?
+			(dataGenerated.isExpression ? dataGenerated.output : `{${dataGenerated.output}}`) :
+			dataGenerated
+	})`;
 	} else if (type === "nodeDataChildren") {
 		// Data and children nodes represent calling a function with a data
 		// object using attribute syntax and children.

@@ -25,6 +25,7 @@ function viewCreate(node) {
 	} else {
 		// Create a DOM element.
 		const element = document.createElement(nodeName);
+		element.MoonChildren = element.MoonChildren || [];
 
 		// Set data.
 		const nodeData = node.data;
@@ -52,6 +53,12 @@ function viewCreate(node) {
 						for (const valueKey in value) {
 							elementStyle[valueKey] = value[valueKey];
 						}
+
+						break;
+					}
+					case "innerHTML": {
+						// Set raw HTML content.
+						element.innerHTML = value;
 
 						break;
 					}
@@ -203,26 +210,67 @@ function viewPatch(nodeOld, nodeOldElement, nodeNew) {
 					}
 					case "children": {
 						// Update children.
+						const nodeOldElementMoonChildren = nodeOldElement.MoonChildren || [];
 						const valueNewLength = valueNew.length;
 
+						// Keyed diff if keys exist on new nodes.
+						const keyed = [];
+						let hasKeys = true;
+						for (let i = 0; i < valueNewLength; i++) {
+							const key = valueNew[i].data && valueNew[i].data.key;
+							if (key === undefined) {
+								hasKeys = false;
+								break;
+							}
+							keyed.push(key);
+						}
+
 						if (valueOld === undefined) {
-							// If there were no old children, create new children.
-							const nodeOldElementMoonChildren = nodeOldElement.MoonChildren = [];
+							for (let i = 0; i < valueNewLength; i++) {
+								const childEl = viewCreate(valueNew[i]);
+								nodeOldElementMoonChildren.push(childEl);
+								nodeOldElement.appendChild(childEl);
+							}
+							nodeOldElement.MoonChildren = nodeOldElementMoonChildren;
+						} else if (hasKeys) {
+							const oldKeyMap = {};
+							for (let i = 0; i < valueOld.length; i++) {
+								const key = valueOld[i].data && valueOld[i].data.key;
+								if (key !== undefined) {
+									oldKeyMap[key] = { node: valueOld[i], el: nodeOldElementMoonChildren[i], used: false };
+								}
+							}
+
+							const newChildrenEls = [];
 
 							for (let i = 0; i < valueNewLength; i++) {
-								const nodeOldElementChild = viewCreate(valueNew[i]);
+								const newNode = valueNew[i];
+								const key = keyed[i];
+								const existing = oldKeyMap[key];
 
-								nodeOldElementMoonChildren.push(nodeOldElementChild);
-								nodeOldElement.appendChild(nodeOldElementChild);
+								if (existing) {
+									viewPatch(existing.node, existing.el, newNode);
+									existing.used = true;
+									newChildrenEls.push(existing.el);
+								} else {
+									const childEl = viewCreate(newNode);
+									newChildrenEls.push(childEl);
+									nodeOldElement.appendChild(childEl);
+								}
 							}
+
+							// Remove unused old keyed elements.
+							for (const key in oldKeyMap) {
+								if (!oldKeyMap[key].used) {
+									nodeOldElement.removeChild(oldKeyMap[key].el);
+								}
+							}
+
+							nodeOldElement.MoonChildren = newChildrenEls;
 						} else {
 							const valueOldLength = valueOld.length;
 
 							if (valueOldLength === valueNewLength) {
-								// If the children have the same length then update
-								// both as usual.
-								const nodeOldElementMoonChildren = nodeOldElement.MoonChildren;
-
 								for (let i = 0; i < valueOldLength; i++) {
 									const valueOldNode = valueOld[i];
 									const valueNewNode = valueNew[i];
@@ -240,11 +288,6 @@ function viewPatch(nodeOld, nodeOldElement, nodeNew) {
 									}
 								}
 							} else if (valueOldLength > valueNewLength) {
-								// If there are more old children than new children,
-								// update the corresponding ones and remove the extra
-								// old children.
-								const nodeOldElementMoonChildren = nodeOldElement.MoonChildren;
-
 								for (let i = 0; i < valueNewLength; i++) {
 									const valueOldNode = valueOld[i];
 									const valueNewNode = valueNew[i];
@@ -266,11 +309,6 @@ function viewPatch(nodeOld, nodeOldElement, nodeNew) {
 									nodeOldElement.removeChild(nodeOldElementMoonChildren.pop());
 								}
 							} else {
-								// If there are more new children than old children,
-								// update the corresponding ones and append the extra
-								// new children.
-								const nodeOldElementMoonChildren = nodeOldElement.MoonChildren;
-
 								for (let i = 0; i < valueOldLength; i++) {
 									const valueOldNode = valueOld[i];
 									const valueNewNode = valueNew[i];
@@ -348,7 +386,7 @@ function viewPatch(nodeOld, nodeOldElement, nodeNew) {
 					case "children": {
 						// Remove children.
 						const valueOldLength = nodeOldData.children.length;
-						const nodeOldElementMoonChildren = nodeOldElement.MoonChildren;
+						const nodeOldElementMoonChildren = nodeOldElement.MoonChildren || [];
 
 						for (let i = 0; i < valueOldLength; i++) {
 							nodeOldElement.removeChild(nodeOldElementMoonChildren.pop());
