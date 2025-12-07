@@ -26,6 +26,12 @@ function unwrapBraces(value) {
 	) ? value[1] : value;
 }
 
+function normalizeAttributeName(name) {
+	if (name === "className") return "class";
+	if (name === "htmlFor") return "for";
+	return name;
+}
+
 /**
  * Generates a name for a function call.
  *
@@ -72,8 +78,17 @@ export default function generate(tree) {
 
 		for (let i = 0; i < value.length; i++) {
 			const pair = value[i];
-			const attributeValue = unwrapBraces(pair[2]);
-			output += `${separator}"${generate(pair[0])}":${generate(attributeValue)}${generate(pair[3])}`;
+			const attributeName = normalizeAttributeName(generate(unwrapBraces(pair[0])));
+			const pairValue = pair[1];
+			if (attributeName.slice(0, 3) === "...") {
+				const spreadExpr = attributeName.slice(3) || generate(unwrapBraces(pairValue && pairValue[1] || []));
+				output += `${separator}...${spreadExpr}${generate(pair[2])}`;
+			} else {
+				const attributeValue = pairValue === null ?
+					"true" :
+					generate(unwrapBraces(pairValue[1]));
+				output += `${separator}"${attributeName}":${attributeValue}${generate(pair[2])}`;
+			}
 			separator = ",";
 		}
 

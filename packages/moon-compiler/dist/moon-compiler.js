@@ -180,6 +180,12 @@
 				}
 				return output;
 			};
+		},
+		optional: function optional(parse) {
+			return function (input, index) {
+				var output = parse(input, index);
+				return output instanceof ParseError && output.index === index ? [null, index] : output;
+			};
 		}
 	};
 
@@ -195,7 +201,7 @@
 			return parser.alternates([parser.many1(parser.regex(identifierRE)), parser.sequence([parser.character("\""), parser.many(parser.or(parser.and(parser.character("\\"), parser.any), parser.not(["\""]))), parser.character("\"")]), parser.sequence([parser.character("'"), parser.many(parser.or(parser.and(parser.character("\\"), parser.any), parser.not(["'"]))), parser.character("'")]), parser.sequence([parser.character("`"), parser.many(parser.or(parser.and(parser.character("\\"), parser.any), parser.not(["`"]))), parser.character("`")]), parser.sequence([parser.character("("), grammar.expression, parser.character(")")]), parser.sequence([parser.character("["), grammar.expression, parser.character("]")]), parser.sequence([parser.character("{"), grammar.expression, parser.character("}")])])(input, index);
 		},
 		attributes: function attributes(input, index) {
-			return parser.type("attributes", parser.many(parser.sequence([grammar.value, parser.character("="), grammar.value, grammar.separator])))(input, index);
+			return parser.type("attributes", parser.many(parser.sequence([grammar.value, parser.optional(parser.sequence([parser.character("="), grammar.value])), grammar.separator])))(input, index);
 		},
 		text: parser.type("text", parser.many1(parser.or(parser.and(parser.character("\\"), parser.any), parser.not(["{", "<"])))),
 		interpolation: function interpolation(input, index) {
@@ -298,6 +304,11 @@
 	function unwrapBraces(value) {
 		return Array.isArray(value) && value.length === 3 && value[0] === "{" && value[2] === "}" ? value[1] : value;
 	}
+	function normalizeAttributeName(name) {
+		if (name === "className") return "class";
+		if (name === "htmlFor") return "for";
+		return name;
+	}
 
 	/**
 	 * Generates a name for a function call.
@@ -338,8 +349,15 @@
 			var separator = "";
 			for (var _i = 0; _i < value.length; _i++) {
 				var pair = value[_i];
-				var attributeValue = unwrapBraces(pair[2]);
-				_output += separator + "\"" + generate(pair[0]) + "\":" + generate(attributeValue) + generate(pair[3]);
+				var attributeName = normalizeAttributeName(generate(unwrapBraces(pair[0])));
+				var pairValue = pair[1];
+				if (attributeName.slice(0, 3) === "...") {
+					var spreadExpr = attributeName.slice(3) || generate(unwrapBraces(pairValue && pairValue[1] || []));
+					_output += separator + "..." + spreadExpr + generate(pair[2]);
+				} else {
+					var attributeValue = pairValue === null ? "true" : generate(unwrapBraces(pairValue[1]));
+					_output += separator + "\"" + attributeName + "\":" + attributeValue + generate(pair[2]);
+				}
 				separator = ",";
 			}
 			return {

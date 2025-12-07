@@ -175,6 +175,13 @@ const parser = {
 		}
 
 		return output;
+	},
+	optional: parse => (input, index) => {
+		const output = parse(input, index);
+
+		return output instanceof ParseError && output.index === index ?
+			[null, index] :
+			output;
 	}
 };
 
@@ -230,8 +237,10 @@ const grammar = {
 	])(input, index),
 	attributes: (input, index) => parser.type("attributes", parser.many(parser.sequence([
 		grammar.value,
-		parser.character("="),
-		grammar.value,
+		parser.optional(parser.sequence([
+			parser.character("="),
+			grammar.value
+		])),
 		grammar.separator
 	])))(input, index),
 	text: parser.type("text", parser.many1(parser.or(

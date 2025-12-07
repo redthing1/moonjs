@@ -22,6 +22,7 @@
 - Include it with a plain script tag; it exposes a global `Moon` and compiles `<script type="text/moon">` inline.
 - Use `Moon.view.mount(element)` once to bind to a root, and set `Moon.m.view = (<div>…</div>)` to render. Handlers can be named functions or inline arrows (e.g., `onClick={() => ...}`) now that the compiler unwraps `{}` in attribute values.
 - If you prefer smaller pieces, use `packages/moon/dist/moon.min.js` alone, or add `packages/moon-browser/dist/moon-browser.min.js` for inline Moon scripts.
+- JSX parity notes: `className`/`htmlFor` map to `class`/`for`, boolean shorthand works (`disabled`, `autoFocus`), JSX-style handlers are supported, and prop spread (`{...props}`) is allowed. Fragments (`<>…</>`) are not yet implemented.
 
 Example (works via file://; also see `examples/moon-web.html`):
 

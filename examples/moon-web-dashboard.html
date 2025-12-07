@@ -14,28 +14,28 @@
 			--border: #1c1f27;
 		}
 		* { box-sizing: border-box; }
-		body {
-			margin: 0;
-			padding: 16px;
-			background: var(--bg);
-			color: var(--text);
+	body {
+		margin: 0;
+		padding: 16px;
+		background: var(--bg);
+		color: var(--text);
 			font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
 			line-height: 1.5;
 			font-size: 13px;
 		}
-		.layout {
-			max-width: 960px;
-			margin: 0 auto;
-			display: grid;
-			gap: 10px;
-			align-items: start;
-		}
-		.panel {
-			background: var(--panel);
-			border: 1px solid var(--border);
-			border-radius: 8px;
-			padding: 10px 12px;
-		}
+	.layout {
+		max-width: 960px;
+		margin: 0 auto;
+		display: grid;
+		gap: 10px;
+		align-items: start;
+	}
+	.panel {
+		background: var(--panel);
+		border: 1px solid var(--border);
+		border-radius: 8px;
+		padding: 10px 12px;
+	}
 		.header {
 			display: flex;
 			align-items: center;
@@ -126,11 +126,23 @@
 			border: 1px solid var(--border);
 			color: var(--muted);
 		}
-		form.new-item {
-			display: grid;
-			grid-template-columns: 2fr 1fr 1fr 80px;
-			gap: 6px;
-		}
+	form.new-item {
+		display: grid;
+		grid-template-columns: 2fr 1fr 1fr auto auto;
+		gap: 6px;
+		align-items: center;
+	}
+	.sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
+	}
 		@media (max-width: 720px) {
 			form.new-item { grid-template-columns: 1fr; }
 			.header { flex-direction: column; align-items: flex-start; }
@@ -145,7 +157,7 @@
 	</style>
 </head>
 <body>
-	<div id="root" class="layout"></div>
+	<div id="root" className="layout"></div>
 
 	<!-- Point this src to your vendored copy of moon-web.min.js -->
 	<script src="../packages/moon-web/dist/moon-web.min.js"></script>
@@ -172,6 +184,14 @@
 			newStatus: "todo",
 			newPriority: 2
 		};
+
+		function updateItem(id, nextFields) {
+			setState({
+				items: state.items.map(function(item) {
+					return item.id === id ? Object.assign({}, item, nextFields, { updated: now() }) : item;
+				})
+			});
+		}
 
 		function now() { return Date.now(); }
 
@@ -208,6 +228,59 @@
 			return list;
 		}
 
+		function toggleStatus(id) {
+			const nextStatuses = { todo: "doing", doing: "review", review: "done", done: "todo" };
+			const next = state.items.map(function(item) {
+				return item.id === id ? Object.assign({}, item, { status: nextStatuses[item.status] || "todo", updated: now() }) : item;
+			});
+			setState({ items: next });
+		}
+
+		function bumpPriority(id, delta) {
+			const next = state.items.map(function(item) {
+				if (item.id === id) {
+					var nextP = Math.min(3, Math.max(1, item.priority + delta));
+					return Object.assign({}, item, { priority: nextP, updated: now() });
+				}
+				return item;
+			});
+			setState({ items: next });
+		}
+
+		function removeItem(id) {
+			setState({ items: state.items.filter(function(item) { return item.id !== id; }) });
+		}
+
+		function renderItem(item) {
+			var statusColors = {
+				todo: "#e5e7eb",
+				doing: "#7dd3fc",
+				review: "#facc15",
+				done: "#34d399"
+			};
+
+			return Moon.view.components.div ({"class":"card",children:[
+				Moon.view.components.div ({"class":"card-head",children:[
+					Moon.view.components.strong({children:[Moon.view.components.text({data:item.title})]})
+					,Moon.view.components.div ({"class":"meta",children:[
+						Moon.view.components.button ({"class":"badge" ,"style":{borderColor: statusColors[item.status] || "#1c1f27", color: statusColors[item.status] || "#e5e7eb", background: "transparent"} ,"onClick":() => toggleStatus(item.id),children:[Moon.view.components.text({data:item.status})]})
+						,Moon.view.components.div ({"class":"badge" ,"style":{display: "inline-flex", gap: "6px", alignItems: "center"} ,"children":[
+							Moon.view.components.button ({"onClick":() => bumpPriority(item.id, -1) ,"aria-label":"Lower priority" ,"style":{background: "transparent", color: "var(--muted)", border: "none", cursor: "pointer"},children:[Moon.view.components.text({data:"-"})]})
+							,Moon.view.components.span({children:[Moon.view.components.text({data:"P"}),Moon.view.components.text({data:item.priority})]})
+							,Moon.view.components.button ({"onClick":() => bumpPriority(item.id, 1) ,"aria-label":"Raise priority" ,"style":{background: "transparent", color: "var(--muted)", border: "none", cursor: "pointer"},children:[Moon.view.components.text({data:"+"})]})
+						]})
+						,Moon.view.components.span({children:[Moon.view.components.text({data:new Date(item.updated).toLocaleDateString()})]})
+						,Moon.view.components.button ({"onClick":() => removeItem(item.id) ,"aria-label":"Remove" ,"style":{background: "transparent", color: "var(--muted)", border: "none", cursor: "pointer"},children:[Moon.view.components.text({data:"×"})]})
+					]})
+				]})
+				,Moon.view.components.div ({"style":{marginTop: "8px", display: "flex", gap: "6px", flexWrap: "wrap"} ,"children":
+					item.tags.map(function(tag) {
+						return Moon.view.components.span ({"class":"tag",children:[Moon.view.components.text({data:"#"}),Moon.view.components.text({data:tag})]});
+					})
+				})
+			]});
+		}
+
 		function addItem(evt) {
 			evt.preventDefault();
 			var title = state.newTitle.trim();
@@ -242,27 +315,30 @@
 			var items = filteredItems();
 
 			Moon.m.view = (
-				<div class="layout">
-					<div class="panel header">
+				<div className="layout">
+					<div className="panel header">
 						<div>
 							<div style={{fontWeight: "bold"}}>Workspace</div>
 							<div style={{color: "var(--muted)", fontSize: "13px"}}>Search, filter, and track work items</div>
 						</div>
-						<div class="tabs">
-							<button class={`tab ${state.tab === "all" ? "active" : ""}`} onClick={() => updateField("tab", "all")}>All</button>
-							<button class={`tab ${state.tab === "todo" ? "active" : ""}`} onClick={() => updateField("tab", "todo")}>Todo</button>
-							<button class={`tab ${state.tab === "doing" ? "active" : ""}`} onClick={() => updateField("tab", "doing")}>Doing</button>
-							<button class={`tab ${state.tab === "review" ? "active" : ""}`} onClick={() => updateField("tab", "review")}>Review</button>
-							<button class={`tab ${state.tab === "done" ? "active" : ""}`} onClick={() => updateField("tab", "done")}>Done</button>
+						<div className="tabs">
+							<button className={`tab ${state.tab === "all" ? "active" : ""}`} onClick={() => updateField("tab", "all")}>All</button>
+							<button className={`tab ${state.tab === "todo" ? "active" : ""}`} onClick={() => updateField("tab", "todo")}>Todo</button>
+							<button className={`tab ${state.tab === "doing" ? "active" : ""}`} onClick={() => updateField("tab", "doing")}>Doing</button>
+							<button className={`tab ${state.tab === "review" ? "active" : ""}`} onClick={() => updateField("tab", "review")}>Review</button>
+							<button className={`tab ${state.tab === "done" ? "active" : ""}`} onClick={() => updateField("tab", "done")}>Done</button>
 						</div>
 					</div>
 
-					<div class="panel filters">
+					<div className="panel filters">
+						<label className="sr-only" htmlFor="search">Search</label>
 						<input
+							id="search"
 							type="search"
 							placeholder="Search titles or tags"
 							value={state.q}
 							onInput={(e) => updateField("q", e.target.value)}
+							autoFocus
 						/>
 						<select value={state.sort} onChange={(e) => updateField("sort", e.target.value)}>
 							<option value="recent">Sort: Recent</option>
@@ -288,8 +364,8 @@
 						</select>
 					</div>
 
-					<div class="panel">
-						<form class="new-item" onSubmit={addItem}>
+					<div className="panel">
+						<form className="new-item" onSubmit={addItem}>
 							<input
 								type="text"
 								placeholder="New item title"
@@ -314,42 +390,23 @@
 								<option value="2">Priority: 2</option>
 								<option value="3">Priority: 3 (high)</option>
 							</select>
-							<button type="submit" style={{gridColumn: "1 / -1", background: "var(--accent)", color: "#0b1222", fontWeight: "bold"}}>Add item</button>
+							<button
+								type="submit"
+								disabled={!state.newTitle.trim()}
+								style={{background: "var(--accent)", color: "#0b1222", fontWeight: "bold"}}
+							>Add</button>
+							<span style={{fontSize: "12px", color: "var(--muted)"}}>
+								Title, tags, status, priority
+							</span>
 						</form>
 					</div>
 
-					<div class="panel" children={
-						items.length === 0 ?
-							[<div class="empty">No items match the current filters.</div>] :
-							[<div class="list" children={
-								items.map(function(item) {
-									var statusColors = {
-										todo: "#e5e7eb",
-										doing: "#7dd3fc",
-										review: "#facc15",
-										done: "#34d399"
-									};
-									return (
-										<div class="card">
-											<div class="card-head">
-												<strong>{item.title}</strong>
-												<div class="meta">
-													<span class="badge" style={{borderColor: statusColors[item.status] || "#1c1f27", color: statusColors[item.status] || "#e5e7eb"}}>
-														{item.status}
-													</span>
-													<span class="badge">P{item.priority}</span>
-													<span>{new Date(item.updated).toLocaleDateString()}</span>
-												</div>
-											</div>
-											<div style={{marginTop: "8px", display: "flex", gap: "6px", flexWrap: "wrap"}} children={
-												item.tags.map(function(tag) {
-													return <span class="tag">#{tag}</span>;
-												})
-											}/>
-										</div>
-									);
-								})
-							}/>]
+					<div className="panel" children={
+						[
+							items.length === 0 ?
+								<div className="empty">No items match the current filters.</div> :
+								<div className="list" children={items.map(renderItem)}/>
+						]
 					}/>
 				</div>
 			);
