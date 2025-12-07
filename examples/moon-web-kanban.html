@@ -45,6 +45,10 @@
 			border-color: var(--accent);
 			font-weight: 700;
 		}
+		.btn.disabled {
+			opacity: 0.5;
+			cursor: not-allowed;
+		}
 		.columns {
 			display: grid;
 			grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -116,10 +120,12 @@
 	<script src="../packages/moon-web/dist/moon-web.min.js"></script>
 	<script type="text/moon">
 		Moon.view.mount(document.getElementById("root"));
+		var cls = Moon.view.cls;
 
 		var seq = 7;
 		var columns = ["backlog", "doing", "review", "done"];
 		var labels = { backlog: "Backlog", doing: "Doing", review: "Review", done: "Done" };
+		var tagOptions = ["all", "design", "frontend", "backend", "docs", "data", "ops", "misc"];
 		var state = {
 			filter: "all",
 			q: "",
@@ -158,6 +164,12 @@
 			});
 		}
 
+		function renderOptions(list, prefix) {
+			return list.map(function(value) {
+				return <option value={value} key={"opt-" + value}>{prefix ? prefix + value : value}</option>;
+			});
+		}
+
 		function moveCard(id, dir) {
 			setState({
 				items: state.items.map(function(item) {
@@ -188,8 +200,8 @@
 					</div>
 					<small>Owner: {item.owner}</small>
 					<div style={ { display: "flex", gap: "6px", marginTop: "6px" } }>
-						<button class="btn" onClick={() => moveCard(item.id, -1)} disabled={item.column === "backlog"}>←</button>
-						<button class="btn" onClick={() => moveCard(item.id, 1)} disabled={item.column === "done"}>→</button>
+						<button class={cls("btn", item.column === "backlog" && "disabled")} onClick={() => moveCard(item.id, -1)} disabled={item.column === "backlog"}>←</button>
+						<button class={cls("btn", item.column === "done" && "disabled")} onClick={() => moveCard(item.id, 1)} disabled={item.column === "done"}>→</button>
 					</div>
 				</div>
 			);
@@ -217,26 +229,18 @@
 						<div style={ { display: "flex", gap: "6px", flexWrap: "wrap" } }>
 							<input type="search" placeholder="Search" value={state.q} onInput={(e) => setState({ q: e.target.value })}/>
 							<select value={state.filter} onChange={(e) => setState({ filter: e.target.value })}>
-								<option value="all">All tags</option>
-								<option value="design">design</option>
-								<option value="frontend">frontend</option>
-								<option value="backend">backend</option>
-								<option value="docs">docs</option>
-								<option value="data">data</option>
-								<option value="ops">ops</option>
-								<option value="misc">misc</option>
+								{renderOptions(tagOptions)}
 							</select>
 						</div>
 					</div>
 
 					<form onSubmit={addCard}>
 						<input type="text" placeholder="New card title" value={state.newTitle} onInput={(e) => setState({ newTitle: e.target.value })} required=true/>
-						<input type="text" placeholder="Tag (e.g. design)" value={state.newTag} onInput={(e) => setState({ newTag: e.target.value })}/>
+						<select value={state.newTag} onChange={(e) => setState({ newTag: e.target.value })}>
+							{renderOptions(tagOptions)}
+						</select>
 						<select value={state.newColumn} onChange={(e) => setState({ newColumn: e.target.value })}>
-							<option value="backlog">Backlog</option>
-							<option value="doing">Doing</option>
-							<option value="review">Review</option>
-							<option value="done">Done</option>
+							{renderOptions(columns)}
 						</select>
 						<button class="btn btn-primary" type="submit">Add</button>
 					</form>

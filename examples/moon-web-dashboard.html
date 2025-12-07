@@ -211,6 +211,18 @@
 			render();
 		}
 
+		function updateField(field, value) {
+			setState({ [field]: value });
+		}
+
+		function updateFieldFromEvent(field) {
+			return function(evt) { updateField(field, evt.target.value); };
+		}
+
+		function formatDate(ts) {
+			return new Date(ts).toLocaleDateString();
+		}
+
 		function renderOptions(list, prefix) {
 			return list.map(function(value) {
 				return <option value={value} key={"opt-" + value}>{prefix ? prefix + value : value}</option>;
@@ -288,7 +300,7 @@
 								<span>P{item.priority}</span>
 								<button aria-label="Raise priority" style={ { background: "transparent", color: "var(--muted)", border: "none", cursor: "pointer" } } onClick={() => bumpPriority(item.id, 1)}>+</button>
 							</div>
-							<span>{new Date(item.updated).toLocaleDateString()}</span>
+							<span>{formatDate(item.updated)}</span>
 							<button aria-label="Remove" style={ { background: "transparent", color: "var(--muted)", border: "none", cursor: "pointer" } } onClick={() => removeItem(item.id)}>×</button>
 						</div>
 					</div>
@@ -325,12 +337,6 @@
 			});
 		}
 
-		function updateField(field, value) {
-			var next = {};
-			next[field] = value;
-			setState(next);
-		}
-
 		function render() {
 			var items = filteredItems();
 
@@ -354,23 +360,23 @@
 
 					<div class="panel filters">
 						<label class="sr-only" for="search">Search</label>
-						<input id="search" type="search" placeholder="Search titles or tags" value={state.q} onInput={(e) => updateField("q", e.target.value)} autofocus=true/>
-						<select value={state.sort} onChange={(e) => updateField("sort", e.target.value)}>{renderSelectOptions(sortOptions)}</select>
-						<select value={state.status} onChange={(e) => updateField("status", e.target.value)}>{renderOptions(statusOptions, "Status: ")}</select>
-						<select value={state.tag} onChange={(e) => updateField("tag", e.target.value)}>{renderOptions(tagOptions, "Tag: ")}</select>
+						<input id="search" type="search" placeholder="Search titles or tags" value={state.q} onInput={updateFieldFromEvent("q")} autofocus=true/>
+						<select value={state.sort} onChange={updateFieldFromEvent("sort")}>{renderSelectOptions(sortOptions)}</select>
+						<select value={state.status} onChange={updateFieldFromEvent("status")}>{renderOptions(statusOptions, "Status: ")}</select>
+						<select value={state.tag} onChange={updateFieldFromEvent("tag")}>{renderOptions(tagOptions, "Tag: ")}</select>
 					</div>
 
 					<div class="panel">
 						<form class="new-item" onSubmit={addItem}>
-							<input type="text" placeholder="New item title" value={state.newTitle} onInput={(e) => updateField("newTitle", e.target.value)} required=true/>
-							<input type="text" placeholder="Tags (comma separated)" value={state.newTag} onInput={(e) => updateField("newTag", e.target.value)}/>
-							<select value={state.newStatus} onChange={(e) => updateField("newStatus", e.target.value)}>
+							<input type="text" placeholder="New item title" value={state.newTitle} onInput={updateFieldFromEvent("newTitle")} required=true/>
+							<input type="text" placeholder="Tags (comma separated)" value={state.newTag} onInput={updateFieldFromEvent("newTag")}/>
+							<select value={state.newStatus} onChange={updateFieldFromEvent("newStatus")}>
 								<option value="todo">Status: Todo</option>
 								<option value="doing">Status: Doing</option>
 								<option value="review">Status: Review</option>
 								<option value="done">Status: Done</option>
 							</select>
-							<select value={state.newPriority} onChange={(e) => updateField("newPriority", e.target.value)}>
+							<select value={state.newPriority} onChange={updateFieldFromEvent("newPriority")}>
 								<option value="1">Priority: 1 (low)</option>
 								<option value="2">Priority: 2</option>
 								<option value="3">Priority: 3 (high)</option>
