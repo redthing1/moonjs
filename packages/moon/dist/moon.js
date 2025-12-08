@@ -169,18 +169,17 @@
 		return target;
 	}
 	function warnOnce(category, message) {
-		if ("development" === "production") return;
 		throw new Error(message);
 	}
 	function setRef(ref, value) {
+		assertRefValue(ref, value && value.nodeName ? value.nodeName.toLowerCase() : "node");
 		if (!ref) return;
 		if (typeof ref === "function") {
 			ref(value);
 		} else if (typeof ref === "object") {
 			ref.current = value;
-		} else if ("development" !== "production") {
-			/* istanbul ignore next */
-			console.warn("[Moon] Ignoring unsupported ref type:", ref);
+		} else {
+			throw new Error("[Moon] Unsupported ref type; refs must be functions or ref objects.");
 		}
 	}
 	function normalizeStyleInline(style) {
@@ -207,7 +206,6 @@
 		return style;
 	}
 	function isUnknownDomProp(element, key) {
-		if ("development" === "production") return false;
 		if (!element || typeof element !== "object") return false;
 		if (key === "key" || key === "ref") return false;
 		if (key === "attributes" || key === "style" || key === "innerHTML" || key === "focus" || key === "class" || key === "for" || key === "children") return false;
@@ -248,15 +246,62 @@
 		}
 	}
 	function assertStyleObject(value, nodeName) {
-		if ("development" === "production") return;
-		if (!value || typeof value !== "object") {
-			throw new Error("[Moon] Style on <" + nodeName + "> must be an object, received " + typeof value + ".");
+		var valueType = value === null ? "null" : Array.isArray(value) ? "array" : typeof value;
+		if (!value || typeof value !== "object" || Array.isArray(value)) {
+			throw new Error("[Moon] Style on <" + nodeName + "> must be a plain object, received " + valueType + ".");
 		}
 	}
 	function assertEventHandler(value, key, nodeName) {
-		if ("development" === "production") return;
 		if (typeof value !== "function") {
 			throw new Error("[Moon] Event handler " + key + " on <" + nodeName + "> must be a function.");
+		}
+	}
+	function assertValidKey(key, nodeName) {
+		if (key === undefined) return;
+		var type = typeof key;
+		if (key === null || type !== "string" && type !== "number" || key === "") {
+			throw new Error("[Moon] Key on <" + nodeName + "> must be a string or number, received " + (key === null ? "null" : type) + ".");
+		}
+	}
+	function assertRefValue(ref, nodeName) {
+		if (ref === undefined) return;
+		if (typeof ref === "function") return;
+		if (ref && typeof ref === "object") return;
+		throw new Error("[Moon] Ref on <" + nodeName + "> must be a function or ref object.");
+	}
+	function assertChildrenArray(children, nodeName) {
+		if (!Array.isArray(children)) {
+			throw new Error("[Moon] Children on <" + nodeName + "> must be an array.");
+		}
+		for (var i = 0; i < children.length; i++) {
+			var child = children[i];
+			if (!child || typeof child !== "object" || !child.name) {
+				throw new Error("[Moon] Child " + i + " of <" + nodeName + "> is not a valid view node.");
+			}
+		}
+	}
+	function describeChildShape(children) {
+		if (!Array.isArray(children) || children.length === 0) return "";
+		var shape = "";
+		for (var i = 0; i < children.length; i++) {
+			var child = children[i];
+			var childName = child && child.name ? child.name : "unknown";
+			var keyed = child && child.data && child.data.key !== undefined ? "#keyed" : "#unkeyed";
+			shape += "" + childName + keyed + ";";
+		}
+		return shape;
+	}
+	function assertStableKeyedChildShape(nodeOld, nodeNew) {
+		var keyOld = nodeOld && nodeOld.data ? nodeOld.data.key : undefined;
+		var keyNew = nodeNew && nodeNew.data ? nodeNew.data.key : undefined;
+		if (keyOld === undefined || keyNew === undefined || keyOld !== keyNew) return;
+		var oldChildren = nodeOld.data && nodeOld.data.children;
+		var newChildren = nodeNew.data && nodeNew.data.children;
+		if (!oldChildren || !newChildren) return;
+		var oldShape = describeChildShape(oldChildren);
+		var newShape = describeChildShape(newChildren);
+		if (oldShape !== newShape) {
+			throw new Error("[Moon] Key \"" + keyNew + "\" on <" + nodeNew.name + "> was reused but its child shape changed; change the key when swapping layouts to avoid DOM corruption.");
 		}
 	}
 
@@ -345,6 +390,7 @@
 						case "children":
 							{
 								// Recursively append children.
+								assertChildrenArray(value, nodeName);
 								var elementMoonChildren = element.MoonChildren = [];
 								for (var i = 0; i < value.length; i++) {
 									var elementChild = viewCreate(value[i]);
@@ -468,11 +514,30 @@
 								nodeOldElement.htmlFor = valueNew;
 								break;
 							}
+						case "ref":
+							{
+								assertRefValue(valueNew, nodeOld.name);
+								setRef(valueNew, nodeOldElement);
+								break;
+							}
 						case "children":
 							{
 								// Update children.
 								var nodeOldElementMoonChildren = nodeOldElement.MoonChildren || [];
 								var valueNewLength = valueNew.length;
+								assertChildrenArray(valueNew, nodeOld.name);
+								if (valueOld !== undefined) {
+									assertChildrenArray(valueOld, nodeOld.name);
+								}
+								for (var i = 0; i < valueNewLength; i++) {
+									var childNode = valueNew[i];
+									assertValidKey(childNode && childNode.data && childNode.data.key, childNode && childNode.name ? childNode.name : "node");
+									var childRef = childNode && childNode.data && childNode.data.ref;
+									assertRefValue(childRef, childNode && childNode.name ? childNode.name : "node");
+								}
+								if (valueOld !== undefined) {
+									assertStableKeyedChildShape(nodeOld, nodeNew);
+								}
 
 								// Keyed diff if keys exist on new nodes.
 								var keyed = [];
@@ -480,8 +545,9 @@
 								var hasAnyKey = false;
 								var keySet = Object.create(null);
 								var dupKeyDetected = false;
-								for (var i = 0; i < valueNewLength; i++) {
-									var key = valueNew[i].data && valueNew[i].data.key;
+								for (var _i = 0; _i < valueNewLength; _i++) {
+									var key = valueNew[_i].data && valueNew[_i].data.key;
+									assertValidKey(key, valueNew[_i].name);
 									if (key === undefined) {
 										hasKeys = false;
 									} else {
@@ -501,28 +567,32 @@
 									warnOnce("dupKeys", "[Moon] Duplicate keys detected among siblings; keys must be unique.");
 								}
 								if (valueOld === undefined) {
-									for (var _i = 0; _i < valueNewLength; _i++) {
-										var childEl = viewCreate(valueNew[_i]);
+									for (var _i2 = 0; _i2 < valueNewLength; _i2++) {
+										var childEl = viewCreate(valueNew[_i2]);
 										nodeOldElementMoonChildren.push(childEl);
 										nodeOldElement.appendChild(childEl);
 									}
 									nodeOldElement.MoonChildren = nodeOldElementMoonChildren;
 								} else if (hasKeys) {
 									var oldKeyMap = {};
-									for (var _i2 = 0; _i2 < valueOld.length; _i2++) {
-										var _key = valueOld[_i2].data && valueOld[_i2].data.key;
+									for (var _i3 = 0; _i3 < valueOld.length; _i3++) {
+										var _key = valueOld[_i3].data && valueOld[_i3].data.key;
+										assertValidKey(_key, valueOld[_i3].name);
 										if (_key !== undefined) {
+											if (oldKeyMap[_key]) {
+												throw new Error("[Moon] Duplicate keys detected among existing siblings under <" + nodeOld.name + ">; keys must be unique.");
+											}
 											oldKeyMap[_key] = {
-												node: valueOld[_i2],
-												el: nodeOldElementMoonChildren[_i2],
+												node: valueOld[_i3],
+												el: nodeOldElementMoonChildren[_i3],
 												used: false
 											};
 										}
 									}
 									var newChildrenEls = [];
-									for (var _i3 = 0; _i3 < valueNewLength; _i3++) {
-										var newNode = valueNew[_i3];
-										var _key2 = keyed[_i3];
+									for (var _i4 = 0; _i4 < valueNewLength; _i4++) {
+										var newNode = valueNew[_i4];
+										var _key2 = keyed[_i4];
 										var existing = oldKeyMap[_key2];
 										if (existing) {
 											viewPatch(existing.node, existing.el, newNode);
@@ -531,7 +601,6 @@
 										} else {
 											var _childEl = viewCreate(newNode);
 											newChildrenEls.push(_childEl);
-											nodeOldElement.appendChild(_childEl);
 										}
 									}
 
@@ -541,56 +610,73 @@
 											nodeOldElement.removeChild(oldKeyMap[_key3].el);
 										}
 									}
+
+									// Reorder/mount in the new order to avoid stale DOM positions.
+									var reference = nodeOldElement.firstChild;
+									for (var _i5 = 0; _i5 < valueNewLength; _i5++) {
+										var desired = newChildrenEls[_i5];
+										if (reference === desired) {
+											reference = reference.nextSibling;
+										} else {
+											nodeOldElement.insertBefore(desired, reference);
+											reference = desired.nextSibling;
+										}
+									}
+									while (reference) {
+										var next = reference.nextSibling;
+										nodeOldElement.removeChild(reference);
+										reference = next;
+									}
 									nodeOldElement.MoonChildren = newChildrenEls;
 								} else {
 									var valueOldLength = valueOld.length;
 									if (valueOldLength === valueNewLength) {
-										for (var _i4 = 0; _i4 < valueOldLength; _i4++) {
-											var valueOldNode = valueOld[_i4];
-											var valueNewNode = valueNew[_i4];
+										for (var _i6 = 0; _i6 < valueOldLength; _i6++) {
+											var valueOldNode = valueOld[_i6];
+											var valueNewNode = valueNew[_i6];
 											if (valueOldNode !== valueNewNode) {
 												if (valueOldNode.name === valueNewNode.name) {
-													viewPatch(valueOldNode, nodeOldElementMoonChildren[_i4], valueNewNode);
+													viewPatch(valueOldNode, nodeOldElementMoonChildren[_i6], valueNewNode);
 												} else {
 													var valueOldElementNew = viewCreate(valueNewNode);
-													nodeOldElement.replaceChild(valueOldElementNew, nodeOldElementMoonChildren[_i4]);
-													nodeOldElementMoonChildren[_i4] = valueOldElementNew;
+													nodeOldElement.replaceChild(valueOldElementNew, nodeOldElementMoonChildren[_i6]);
+													nodeOldElementMoonChildren[_i6] = valueOldElementNew;
 												}
 											}
 										}
 									} else if (valueOldLength > valueNewLength) {
-										for (var _i5 = 0; _i5 < valueNewLength; _i5++) {
-											var _valueOldNode = valueOld[_i5];
-											var _valueNewNode = valueNew[_i5];
+										for (var _i7 = 0; _i7 < valueNewLength; _i7++) {
+											var _valueOldNode = valueOld[_i7];
+											var _valueNewNode = valueNew[_i7];
 											if (_valueOldNode !== _valueNewNode) {
 												if (_valueOldNode.name === _valueNewNode.name) {
-													viewPatch(_valueOldNode, nodeOldElementMoonChildren[_i5], _valueNewNode);
+													viewPatch(_valueOldNode, nodeOldElementMoonChildren[_i7], _valueNewNode);
 												} else {
 													var _valueOldElementNew = viewCreate(_valueNewNode);
-													nodeOldElement.replaceChild(_valueOldElementNew, nodeOldElementMoonChildren[_i5]);
-													nodeOldElementMoonChildren[_i5] = _valueOldElementNew;
+													nodeOldElement.replaceChild(_valueOldElementNew, nodeOldElementMoonChildren[_i7]);
+													nodeOldElementMoonChildren[_i7] = _valueOldElementNew;
 												}
 											}
 										}
-										for (var _i6 = valueNewLength; _i6 < valueOldLength; _i6++) {
+										for (var _i8 = valueNewLength; _i8 < valueOldLength; _i8++) {
 											nodeOldElement.removeChild(nodeOldElementMoonChildren.pop());
 										}
 									} else {
-										for (var _i7 = 0; _i7 < valueOldLength; _i7++) {
-											var _valueOldNode2 = valueOld[_i7];
-											var _valueNewNode2 = valueNew[_i7];
+										for (var _i9 = 0; _i9 < valueOldLength; _i9++) {
+											var _valueOldNode2 = valueOld[_i9];
+											var _valueNewNode2 = valueNew[_i9];
 											if (_valueOldNode2 !== _valueNewNode2) {
 												if (_valueOldNode2.name === _valueNewNode2.name) {
-													viewPatch(_valueOldNode2, nodeOldElementMoonChildren[_i7], _valueNewNode2);
+													viewPatch(_valueOldNode2, nodeOldElementMoonChildren[_i9], _valueNewNode2);
 												} else {
 													var _valueOldElementNew2 = viewCreate(_valueNewNode2);
-													nodeOldElement.replaceChild(_valueOldElementNew2, nodeOldElementMoonChildren[_i7]);
-													nodeOldElementMoonChildren[_i7] = _valueOldElementNew2;
+													nodeOldElement.replaceChild(_valueOldElementNew2, nodeOldElementMoonChildren[_i9]);
+													nodeOldElementMoonChildren[_i9] = _valueOldElementNew2;
 												}
 											}
 										}
-										for (var _i8 = valueOldLength; _i8 < valueNewLength; _i8++) {
-											var nodeOldElementChild = viewCreate(valueNew[_i8]);
+										for (var _i0 = valueOldLength; _i0 < valueNewLength; _i0++) {
+											var nodeOldElementChild = viewCreate(valueNew[_i0]);
 											nodeOldElementMoonChildren.push(nodeOldElementChild);
 											nodeOldElement.appendChild(nodeOldElementChild);
 										}
@@ -652,7 +738,7 @@
 								// Remove children.
 								var _valueOldLength = nodeOldData.children.length;
 								var _nodeOldElementMoonChildren = nodeOldElement.MoonChildren || [];
-								for (var _i9 = 0; _i9 < _valueOldLength; _i9++) {
+								for (var _i1 = 0; _i1 < _valueOldLength; _i1++) {
 									nodeOldElement.removeChild(_nodeOldElementMoonChildren.pop());
 								}
 								break;

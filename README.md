@@ -47,12 +47,13 @@
 - Fragments: `<>…</>` flatten into children.
 - Object literals: attribute values like `style={color: "red"}` stay object literals.
 - Children normalization: `{expr}` inside children can be a string/number, a node, or an array of nodes; everything is flattened via `Moon.view.normalizeChildren` so arrays from `map` render as expected and falsy values disappear.
+- Child shape stability: keep child lists structurally stable; when you swap layouts/view modes, bump the keyed container's `key` so stale DOM isn't reused.
 - Styles: style objects accept hyphenated keys (`{"background-color": "#000"}` is normalized to `backgroundColor`) and camelCase keys.
 - Refs: pass `ref={fnOrRefObj}` to get the underlying element in the browser bundle.
-- Dev warnings: missing-key mixed siblings and unknown DOM props warn in development builds to catch JSX mistakes early.
+- Dev warnings: missing-key mixed siblings and unknown DOM props throw loudly to catch JSX mistakes early.
 - Helper: `Moon.view.cls()` merges class names from strings/arrays/objects (truthy entries only).
 - Helper: `Moon.view.mergeProps()` shallow-merges objects, handy for combining spreads/defaults.
-- Dev strictness: non-function event handlers, non-object `style`, unknown DOM props, mixed/duplicate keys all throw in development to keep JSX usage clean.
+- Strict by default: non-function event handlers, non-object `style`, unknown DOM props, mixed/duplicate keys all throw to keep JSX usage clean (no production-only relaxations).
 
 ### Minimal examples
 

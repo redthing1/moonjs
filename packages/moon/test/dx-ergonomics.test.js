@@ -112,4 +112,164 @@ describe("Moon JSX ergonomics", () => {
 			);
 		}).toThrow();
 	});
+
+	test("style must not be null", () => {
+		const root = document.createElement("div");
+		document.body.appendChild(root);
+		Moon.view.mount(root);
+
+		expect(() => {
+			Moon.m.view = (
+				<Moon.view.components.div style={null}>hi</Moon.view.components.div>
+			);
+		}).toThrow(/Style on/);
+	});
+
+	test("style must not be array or primitive", () => {
+		const root = document.createElement("div");
+		document.body.appendChild(root);
+		Moon.view.mount(root);
+
+		expect(() => {
+			Moon.m.view = (
+				<Moon.view.components.div style={["color:red"]}>hi</Moon.view.components.div>
+			);
+		}).toThrow(/Style on/);
+
+		expect(() => {
+			Moon.m.view = (
+				<Moon.view.components.div style={1}>hi</Moon.view.components.div>
+			);
+		}).toThrow(/Style on/);
+	});
+
+	test("unsupported ref types throw", () => {
+		const root = document.createElement("div");
+		document.body.appendChild(root);
+		Moon.view.mount(root);
+
+		expect(() => {
+			Moon.m.view = (
+				<Moon.view.components.div ref="notAllowed">hi</Moon.view.components.div>
+			);
+		}).toThrow(/Ref on/);
+	});
+
+	test("keyed containers must keep child shape stable", () => {
+		const root = document.createElement("div");
+		document.body.appendChild(root);
+		Moon.view.mount(root);
+
+		Moon.m.view = (
+			<Moon.view.components.div>
+				<Moon.view.components.div key="item">
+					<Moon.view.components.span>A</Moon.view.components.span>
+				</Moon.view.components.div>
+			</Moon.view.components.div>
+		);
+
+		expect(() => {
+			Moon.m.view = (
+				<Moon.view.components.div>
+					<Moon.view.components.div key="item">
+						<Moon.view.components.span>A</Moon.view.components.span>
+						<Moon.view.components.span>B</Moon.view.components.span>
+					</Moon.view.components.div>
+				</Moon.view.components.div>
+			);
+		}).toThrow(/child shape/);
+	});
+
+	test("key must be string or number", () => {
+		const root = document.createElement("div");
+		document.body.appendChild(root);
+		Moon.view.mount(root);
+
+		expect(() => {
+			Moon.m.view = (
+				<Moon.view.components.div>
+					<Moon.view.components.div key={{}}>oops</Moon.view.components.div>
+				</Moon.view.components.div>
+			);
+		}).toThrow(/Key on/);
+	});
+
+	test("key must not be empty string", () => {
+		const root = document.createElement("div");
+		document.body.appendChild(root);
+		Moon.view.mount(root);
+
+		expect(() => {
+			Moon.m.view = (
+				<Moon.view.components.div>
+					<Moon.view.components.div key="">oops</Moon.view.components.div>
+				</Moon.view.components.div>
+			);
+		}).toThrow(/Key on/);
+	});
+
+	test("children prop must be array of nodes", () => {
+		const root = document.createElement("div");
+		document.body.appendChild(root);
+		Moon.view.mount(root);
+
+		expect(() => {
+			Moon.m.view = Moon.view.components.div({ children: "oops" });
+		}).toThrow(/Children on/);
+
+		expect(() => {
+			Moon.m.view = Moon.view.components.div({ children: [null] });
+		}).toThrow(/Child 0/);
+	});
+
+	test("keyed reorder moves DOM into new order", () => {
+		const root = document.createElement("div");
+		document.body.appendChild(root);
+		Moon.view.mount(root);
+
+		Moon.m.view = (
+			<Moon.view.components.div>
+				<Moon.view.components.div key="a">A</Moon.view.components.div>
+				<Moon.view.components.div key="b">B</Moon.view.components.div>
+			</Moon.view.components.div>
+		);
+
+		Moon.m.view = (
+			<Moon.view.components.div>
+				<Moon.view.components.div key="b">B</Moon.view.components.div>
+				<Moon.view.components.div key="c">C</Moon.view.components.div>
+			</Moon.view.components.div>
+		);
+
+		const elChildren = root.children;
+		expect(elChildren.length).toBe(2);
+		expect(elChildren[0].textContent).toBe("B");
+		expect(elChildren[1].textContent).toBe("C");
+	});
+
+	test("keyed containers can reuse key when child shape is stable", () => {
+		const root = document.createElement("div");
+		document.body.appendChild(root);
+		Moon.view.mount(root);
+
+		Moon.m.view = (
+			<Moon.view.components.div>
+				<Moon.view.components.div key="item">
+					<Moon.view.components.span>A</Moon.view.components.span>
+					<Moon.view.components.span>B</Moon.view.components.span>
+				</Moon.view.components.div>
+			</Moon.view.components.div>
+		);
+
+		expect(() => {
+			Moon.m.view = (
+				<Moon.view.components.div>
+					<Moon.view.components.div key="item">
+						<Moon.view.components.span>A</Moon.view.components.span>
+						<Moon.view.components.span>B</Moon.view.components.span>
+					</Moon.view.components.div>
+				</Moon.view.components.div>
+			);
+		}).not.toThrow();
+	});
 });

@@ -38,19 +38,18 @@ export function mergeProps() {
 }
 
 function warnOnce(category, message) {
-	if (process.env.MOON_ENV === "production") return;
 	throw new Error(message);
 }
 
 function setRef(ref, value) {
+	assertRefValue(ref, value && value.nodeName ? value.nodeName.toLowerCase() : "node");
 	if (!ref) return;
 	if (typeof ref === "function") {
 		ref(value);
 	} else if (typeof ref === "object") {
 		ref.current = value;
-	} else if (process.env.MOON_ENV !== "production") {
-		/* istanbul ignore next */
-		console.warn("[Moon] Ignoring unsupported ref type:", ref);
+	} else {
+		throw new Error("[Moon] Unsupported ref type; refs must be functions or ref objects.");
 	}
 }
 
@@ -79,7 +78,6 @@ function normalizeStyleInline(style) {
 }
 
 function isUnknownDomProp(element, key) {
-	if (process.env.MOON_ENV === "production") return false;
 	if (!element || typeof element !== "object") return false;
 	if (key === "key" || key === "ref") return false;
 	if (key === "attributes" || key === "style" || key === "innerHTML" || key === "focus" || key === "class" || key === "for" || key === "children") return false;
@@ -108,16 +106,72 @@ function normalizeEventKey(key) {
 }
 
 function assertStyleObject(value, nodeName) {
-	if (process.env.MOON_ENV === "production") return;
-	if (!value || typeof value !== "object") {
-		throw new Error(`[Moon] Style on <${nodeName}> must be an object, received ${typeof value}.`);
+	const valueType = value === null ? "null" : (Array.isArray(value) ? "array" : typeof value);
+	if (!value || typeof value !== "object" || Array.isArray(value)) {
+		throw new Error(`[Moon] Style on <${nodeName}> must be a plain object, received ${valueType}.`);
 	}
 }
 
 function assertEventHandler(value, key, nodeName) {
-	if (process.env.MOON_ENV === "production") return;
 	if (typeof value !== "function") {
 		throw new Error(`[Moon] Event handler ${key} on <${nodeName}> must be a function.`);
+	}
+}
+
+function assertValidKey(key, nodeName) {
+	if (key === undefined) return;
+	const type = typeof key;
+	if (key === null || (type !== "string" && type !== "number") || key === "") {
+		throw new Error(`[Moon] Key on <${nodeName}> must be a string or number, received ${key === null ? "null" : type}.`);
+	}
+}
+
+function assertRefValue(ref, nodeName) {
+	if (ref === undefined) return;
+	if (typeof ref === "function") return;
+	if (ref && typeof ref === "object") return;
+	throw new Error(`[Moon] Ref on <${nodeName}> must be a function or ref object.`);
+}
+
+function assertChildrenArray(children, nodeName) {
+	if (!Array.isArray(children)) {
+		throw new Error(`[Moon] Children on <${nodeName}> must be an array.`);
+	}
+	for (let i = 0; i < children.length; i++) {
+		const child = children[i];
+		if (!child || typeof child !== "object" || !child.name) {
+			throw new Error(`[Moon] Child ${i} of <${nodeName}> is not a valid view node.`);
+		}
+	}
+}
+
+function describeChildShape(children) {
+	if (!Array.isArray(children) || children.length === 0) return "";
+	let shape = "";
+	for (let i = 0; i < children.length; i++) {
+		const child = children[i];
+		const childName = child && child.name ? child.name : "unknown";
+		const keyed = child && child.data && child.data.key !== undefined ? "#keyed" : "#unkeyed";
+		shape += `${childName}${keyed};`;
+	}
+	return shape;
+}
+
+function assertStableKeyedChildShape(nodeOld, nodeNew) {
+	const keyOld = nodeOld && nodeOld.data ? nodeOld.data.key : undefined;
+	const keyNew = nodeNew && nodeNew.data ? nodeNew.data.key : undefined;
+	if (keyOld === undefined || keyNew === undefined || keyOld !== keyNew) return;
+
+	const oldChildren = nodeOld.data && nodeOld.data.children;
+	const newChildren = nodeNew.data && nodeNew.data.children;
+
+	if (!oldChildren || !newChildren) return;
+
+	const oldShape = describeChildShape(oldChildren);
+	const newShape = describeChildShape(newChildren);
+
+	if (oldShape !== newShape) {
+		throw new Error(`[Moon] Key "${keyNew}" on <${nodeNew.name}> was reused but its child shape changed; change the key when swapping layouts to avoid DOM corruption.`);
 	}
 }
 
@@ -208,6 +262,7 @@ function viewCreate(node) {
 					}
 					case "children": {
 						// Recursively append children.
+						assertChildrenArray(value, nodeName);
 						const elementMoonChildren = element.MoonChildren = [];
 
 						for (let i = 0; i < value.length; i++) {
@@ -338,10 +393,32 @@ function viewPatch(nodeOld, nodeOldElement, nodeNew) {
 
 						break;
 					}
+					case "ref": {
+						assertRefValue(valueNew, nodeOld.name);
+						setRef(valueNew, nodeOldElement);
+
+						break;
+					}
 					case "children": {
 						// Update children.
 						const nodeOldElementMoonChildren = nodeOldElement.MoonChildren || [];
 						const valueNewLength = valueNew.length;
+
+						assertChildrenArray(valueNew, nodeOld.name);
+						if (valueOld !== undefined) {
+							assertChildrenArray(valueOld, nodeOld.name);
+						}
+
+						for (let i = 0; i < valueNewLength; i++) {
+							const childNode = valueNew[i];
+							assertValidKey(childNode && childNode.data && childNode.data.key, childNode && childNode.name ? childNode.name : "node");
+							const childRef = childNode && childNode.data && childNode.data.ref;
+							assertRefValue(childRef, childNode && childNode.name ? childNode.name : "node");
+						}
+
+						if (valueOld !== undefined) {
+							assertStableKeyedChildShape(nodeOld, nodeNew);
+						}
 
 						// Keyed diff if keys exist on new nodes.
 						const keyed = [];
@@ -351,6 +428,7 @@ function viewPatch(nodeOld, nodeOldElement, nodeNew) {
 						let dupKeyDetected = false;
 						for (let i = 0; i < valueNewLength; i++) {
 							const key = valueNew[i].data && valueNew[i].data.key;
+							assertValidKey(key, valueNew[i].name);
 							if (key === undefined) {
 								hasKeys = false;
 							} else {
@@ -381,7 +459,11 @@ function viewPatch(nodeOld, nodeOldElement, nodeNew) {
 							const oldKeyMap = {};
 							for (let i = 0; i < valueOld.length; i++) {
 								const key = valueOld[i].data && valueOld[i].data.key;
+								assertValidKey(key, valueOld[i].name);
 								if (key !== undefined) {
+									if (oldKeyMap[key]) {
+										throw new Error(`[Moon] Duplicate keys detected among existing siblings under <${nodeOld.name}>; keys must be unique.`);
+									}
 									oldKeyMap[key] = { node: valueOld[i], el: nodeOldElementMoonChildren[i], used: false };
 								}
 							}
@@ -400,7 +482,6 @@ function viewPatch(nodeOld, nodeOldElement, nodeNew) {
 								} else {
 									const childEl = viewCreate(newNode);
 									newChildrenEls.push(childEl);
-									nodeOldElement.appendChild(childEl);
 								}
 							}
 
@@ -409,6 +490,23 @@ function viewPatch(nodeOld, nodeOldElement, nodeNew) {
 								if (!oldKeyMap[key].used) {
 									nodeOldElement.removeChild(oldKeyMap[key].el);
 								}
+							}
+
+							// Reorder/mount in the new order to avoid stale DOM positions.
+							let reference = nodeOldElement.firstChild;
+							for (let i = 0; i < valueNewLength; i++) {
+								const desired = newChildrenEls[i];
+								if (reference === desired) {
+									reference = reference.nextSibling;
+								} else {
+									nodeOldElement.insertBefore(desired, reference);
+									reference = desired.nextSibling;
+								}
+							}
+							while (reference) {
+								const next = reference.nextSibling;
+								nodeOldElement.removeChild(reference);
+								reference = next;
 							}
 
 							nodeOldElement.MoonChildren = newChildrenEls;
