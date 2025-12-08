@@ -210,10 +210,10 @@
 		function renderColumn(col) {
 			var items = filteredItems(col);
 			return (
-				<div class="column" key={col}>
-					<h3>{labels[col]}</h3>
+				<div class="column">
+					<h3 key={"title-" + col}>{labels[col]}</h3>
 					{items.map(renderCard)}
-					{items.length === 0 ? <small style={ { color: "var(--muted)" } }>Empty</small> : null}
+					{items.length === 0 ? <small key={"empty-" + col} style={ { color: "var(--muted)" } }>Empty</small> : null}
 				</div>
 			);
 		}
