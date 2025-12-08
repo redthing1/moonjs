@@ -1,6 +1,6 @@
 /**
  * Moon Web v1.0.0-beta.7
- * Copyright 2016-2020 Kabir Shah
+ * Copyright 2016-2020 kbrsh
  * Released under the MIT License
  * https://moonjs.org
  */

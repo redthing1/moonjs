@@ -11,7 +11,7 @@
 		"type": "git",
 		"url": "git+https://github.com/kbrsh/moon.git"
 	},
-	"author": "Kabir Shah",
+	"author": "kbrsh",
 	"license": "MIT",
 	"bugs": {
 		"url": "https://github.com/kbrsh/moon/issues"

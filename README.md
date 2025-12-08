@@ -136,4 +136,4 @@ Support Moon [on Patreon](https://patreon.com/kbrsh) to help sustain the develop
 
 ### License
 
-Licensed under the [MIT License](https://license.kabir.sh) by [Kabir Shah](https://kabir.sh)
+Licensed under the [MIT License](https://license.kabir.sh) by [kbrsh](https://kabir.sh)
