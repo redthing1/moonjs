@@ -143,6 +143,42 @@ describe("Moon JSX ergonomics", () => {
 		}).toThrow(/Style on/);
 	});
 
+	test("style values must be finite primitive", () => {
+		const root = document.createElement("div");
+		document.body.appendChild(root);
+		Moon.view.mount(root);
+
+		expect(() => {
+			Moon.m.view = (
+				<Moon.view.components.div style={{ color: true }}>hi</Moon.view.components.div>
+			);
+		}).toThrow(/Style "color"/);
+
+		expect(() => {
+			Moon.m.view = (
+				<Moon.view.components.div style={{ color: () => {} }}>hi</Moon.view.components.div>
+			);
+		}).toThrow(/Style "color"/);
+
+		expect(() => {
+			Moon.m.view = (
+				<Moon.view.components.div style={{ opacity: Infinity }}>hi</Moon.view.components.div>
+			);
+		}).toThrow(/Style "opacity"/);
+
+		expect(() => {
+			Moon.m.view = (
+				<Moon.view.components.div style={{ "": "red" }}>hi</Moon.view.components.div>
+			);
+		}).toThrow(/Style key/);
+
+		expect(() => {
+			Moon.m.view = (
+				<Moon.view.components.div style={{ [null]: "red" }}>hi</Moon.view.components.div>
+			);
+		}).toThrow(/Style key/);
+	});
+
 	test("unsupported ref types throw", () => {
 		const root = document.createElement("div");
 		document.body.appendChild(root);
@@ -206,6 +242,44 @@ describe("Moon JSX ergonomics", () => {
 				</Moon.view.components.div>
 			);
 		}).toThrow(/Key on/);
+	});
+
+	test("key must not be null", () => {
+		const root = document.createElement("div");
+		document.body.appendChild(root);
+		Moon.view.mount(root);
+
+		expect(() => {
+			Moon.m.view = (
+				<Moon.view.components.div>
+					<Moon.view.components.div key={null}>oops</Moon.view.components.div>
+				</Moon.view.components.div>
+			);
+		}).toThrow(/Key on/);
+	});
+
+	test("attributes must be plain object with primitive values", () => {
+		const root = document.createElement("div");
+		document.body.appendChild(root);
+		Moon.view.mount(root);
+
+		expect(() => {
+			Moon.m.view = (
+				<Moon.view.components.div attributes="notObject">hi</Moon.view.components.div>
+			);
+		}).toThrow(/Attributes/);
+
+		expect(() => {
+			Moon.m.view = (
+				<Moon.view.components.div attributes={{ ok: true, bad: () => {} }}>hi</Moon.view.components.div>
+			);
+		}).toThrow(/Attribute "bad"/);
+
+		expect(() => {
+			Moon.m.view = (
+				<Moon.view.components.div attributes={{ bad: null }}>hi</Moon.view.components.div>
+			);
+		}).toThrow(/Attribute "bad"/);
 	});
 
 	test("children prop must be array of nodes", () => {

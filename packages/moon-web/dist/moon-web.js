@@ -303,6 +303,96 @@
 			}
 		}
 	}
+	function assertPlainObject(value, nodeName, propName) {
+		if (!value || typeof value !== "object" || Array.isArray(value)) {
+			var type = value === null ? "null" : Array.isArray(value) ? "array" : typeof value;
+			throw new Error("[Moon] " + propName + " on <" + nodeName + "> must be a plain object, received " + type + ".");
+		}
+	}
+	function assertBooleanProp(value, nodeName, propName) {
+		if (typeof value !== "boolean") {
+			throw new Error("[Moon] " + propName + " on <" + nodeName + "> must be a boolean.");
+		}
+	}
+	function normalizeStringLikeProp(value, nodeName, propName) {
+		if (typeof value === "string" || typeof value === "number") return value;
+		throw new Error("[Moon] " + propName + " on <" + nodeName + "> must be a string or number.");
+	}
+	function assertStyleValue(value, nodeName, styleKey) {
+		var type = typeof value;
+		if (type === "number" && Number.isFinite(value)) return;
+		if (type === "string") return;
+		throw new Error("[Moon] Style \"" + styleKey + "\" on <" + nodeName + "> must be a finite number or string, received " + type + ".");
+	}
+	function assertStyleKey(styleKey, nodeName) {
+		if (typeof styleKey !== "string" || styleKey.length === 0 || styleKey === "null" || styleKey === "undefined") {
+			throw new Error("[Moon] Style key on <" + nodeName + "> must be a non-empty string.");
+		}
+	}
+	function validateAttributesObject(attributes, nodeName) {
+		for (var attrKey in attributes) {
+			if (attrKey === "" || attrKey === null || attrKey === undefined || typeof attrKey !== "string") {
+				throw new Error("[Moon] Attribute key on <" + nodeName + "> must be a non-empty string.");
+			}
+			var value = attributes[attrKey];
+			var type = typeof value;
+			if (value === null || value === undefined) {
+				throw new Error("[Moon] Attribute \"" + attrKey + "\" on <" + nodeName + "> must not be null/undefined.");
+			}
+			if (type === "number" && !Number.isFinite(value)) {
+				throw new Error("[Moon] Attribute \"" + attrKey + "\" on <" + nodeName + "> must be a finite number, received " + value + ".");
+			}
+			if (type !== "string" && type !== "number" && type !== "boolean") {
+				throw new Error("[Moon] Attribute \"" + attrKey + "\" on <" + nodeName + "> must be a string, number, or boolean, received " + type + ".");
+			}
+		}
+	}
+	function validatePropsShape(nodeData, nodeName) {
+		if (!nodeData || typeof nodeData !== "object") {
+			throw new Error("[Moon] Props on <" + nodeName + "> must be an object.");
+		}
+		for (var key in nodeData) {
+			var value = nodeData[key];
+			if (value === undefined) {
+				throw new Error("[Moon] Prop \"" + key + "\" on <" + nodeName + "> is undefined; pass null to intentionally clear.");
+			}
+			if (key[0] === "o" && key[1] === "n") {
+				assertEventHandler(value, key, nodeName);
+			}
+			if (key === "children") {
+				assertChildrenArray(value, nodeName);
+			}
+			if (key === "attributes") {
+				assertPlainObject(value, nodeName, "Attributes");
+				validateAttributesObject(value, nodeName);
+			}
+			if (key === "style") {
+				assertStyleObject(value, nodeName);
+				normalizeStyleInline(value);
+				for (var styleKey in value) {
+					assertStyleKey(styleKey, nodeName);
+					assertStyleValue(value[styleKey], nodeName, styleKey);
+				}
+			}
+			if (key === "ref") {
+				assertRefValue(value, nodeName);
+			}
+			if (key === "key") {
+				assertValidKey(value, nodeName);
+			}
+			if (key === "class" || key === "for") {
+				normalizeStringLikeProp(value, nodeName, key);
+			}
+			if (key === "focus") {
+				assertBooleanProp(value, nodeName, "focus");
+			}
+			if (key === "innerHTML") {
+				if (typeof value !== "string") {
+					throw new Error("[Moon] innerHTML on <" + nodeName + "> must be a string.");
+				}
+			}
+		}
+	}
 	function describeChildShape(children) {
 		if (!Array.isArray(children) || children.length === 0) return "";
 		var shape = "";
@@ -351,6 +441,7 @@
 
 			// Set data.
 			var nodeData = node.data;
+			validatePropsShape(nodeData, nodeName);
 			for (var key in nodeData) {
 				var value = nodeData[key];
 				if (key[0] === "o" && key[1] === "n") {
@@ -362,6 +453,8 @@
 						case "attributes":
 							{
 								// Set attributes.
+								assertPlainObject(value, nodeName, "Attributes");
+								validateAttributesObject(value, nodeName);
 								for (var valueKey in value) {
 									element.setAttribute(valueKey, value[valueKey]);
 								}
@@ -374,6 +467,8 @@
 								var elementStyle = element.style;
 								normalizeStyleInline(value);
 								for (var _valueKey in value) {
+									assertStyleKey(_valueKey, nodeName);
+									assertStyleValue(value[_valueKey], nodeName, _valueKey);
 									elementStyle[_valueKey] = value[_valueKey];
 								}
 								break;
@@ -381,6 +476,9 @@
 						case "innerHTML":
 							{
 								// Set raw HTML content.
+								if (typeof value !== "string") {
+									throw new Error("[Moon] innerHTML on <" + nodeName + "> must be a string.");
+								}
 								element.innerHTML = value;
 								break;
 							}
@@ -388,7 +486,8 @@
 							{
 								// Set focus if needed. Blur isn't set because it's the
 								// default.
-								if (value) {
+								assertBooleanProp(value, nodeName, "focus");
+								if (value === true) {
 									element.focus();
 								}
 								break;
@@ -396,13 +495,13 @@
 						case "class":
 							{
 								// Set a className property.
-								element.className = value;
+								element.className = normalizeStringLikeProp(value, nodeName, "class");
 								break;
 							}
 						case "for":
 							{
 								// Set an htmlFor property.
-								element.htmlFor = value;
+								element.htmlFor = normalizeStringLikeProp(value, nodeName, "for");
 								break;
 							}
 						case "ref":
@@ -448,6 +547,7 @@
 	function viewPatch(nodeOld, nodeOldElement, nodeNew) {
 		var nodeOldData = nodeOld.data;
 		var nodeNewData = nodeNew.data;
+		validatePropsShape(nodeNewData, nodeOld.name);
 
 		// First, go through all new data and update all of the existing data to
 		// match.
@@ -464,6 +564,8 @@
 						case "attributes":
 							{
 								// Update attributes.
+								assertPlainObject(valueNew, nodeOld.name, "Attributes");
+								validateAttributesObject(valueNew, nodeOld.name);
 								if (valueOld === undefined) {
 									for (var valueNewKey in valueNew) {
 										nodeOldElement.setAttribute(valueNewKey, valueNew[valueNewKey]);
@@ -495,11 +597,15 @@
 								if (valueOld) normalizeStyleInline(valueOld);
 								if (valueOld === undefined) {
 									for (var _valueNewKey2 in valueNew) {
+										assertStyleKey(_valueNewKey2, nodeOld.name);
+										assertStyleValue(valueNew[_valueNewKey2], nodeOld.name, _valueNewKey2);
 										nodeOldElementStyle[_valueNewKey2] = valueNew[_valueNewKey2];
 									}
 								} else {
 									for (var _valueNewKey3 in valueNew) {
 										var _valueNewValue = valueNew[_valueNewKey3];
+										assertStyleKey(_valueNewKey3, nodeOld.name);
+										assertStyleValue(_valueNewValue, nodeOld.name, _valueNewKey3);
 										if (valueOld[_valueNewKey3] !== _valueNewValue) {
 											nodeOldElementStyle[_valueNewKey3] = _valueNewValue;
 										}
@@ -518,6 +624,7 @@
 						case "focus":
 							{
 								// Update focus/blur.
+								assertBooleanProp(valueNew, nodeOld.name, "focus");
 								if (valueNew) {
 									nodeOldElement.focus();
 								} else {
@@ -528,13 +635,13 @@
 						case "class":
 							{
 								// Update a className property.
-								nodeOldElement.className = valueNew;
+								nodeOldElement.className = normalizeStringLikeProp(valueNew, nodeOld.name, "class");
 								break;
 							}
 						case "for":
 							{
 								// Update an htmlFor property.
-								nodeOldElement.htmlFor = valueNew;
+								nodeOldElement.htmlFor = normalizeStringLikeProp(valueNew, nodeOld.name, "for");
 								break;
 							}
 						case "ref":
