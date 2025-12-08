@@ -124,3 +124,5 @@ This guide resulted in an extremely basic todo application, but can be extended 
 * Make the application more modular using [components](/view#components).
 
 By default, the [playground](/play) has a fully functioning todo application that has a few more advanced features. Try extending it with what you've learned!
+
+> Note: This guide describes the original driver-based API using `Moon.use` and `Moon.run`. For the browser-only single-file bundle workflow used by `moon-web.min.js`, see [Browser](/browser), which shows how to mount with `Moon.view.mount` and render by assigning to `Moon.m.view` inside `<script type="text/moon">` blocks.

@@ -5,6 +5,14 @@ order: 4
 
 The view driver is a driver that handles visual output using the DOM in a browser. It uses a virtual DOM under the hood to ensure fast updates, and it works by replacing the old view with a new one.
 
+In this fork, the browser bundle exposes:
+
+* `Moon.view.components` — a set of HTML tag functions that the view language compiles down to.
+* `Moon.view.mount(element)` — a helper that binds the view system to a root DOM node.
+* `Moon.m.view` — the "view driver" that accepts new views when you assign to it.
+
+The rest of this page describes the original driver APIs (`Moon.view.driver`, `Moon.view.m`, `Moon.use`, `Moon.run`) which still explain how views are structured and compiled. For a browser-only walkthrough of `Moon.view.mount`, `Moon.m.view`, JSX-like syntax, and dev strictness, see [Browser](/browser).
+
 ## Configuration
 
 The `Moon.view.driver` is a function that takes a root element where views will be mounted. This can be a query selector or a direct reference to a DOM element. The view driver will replace this element with the view structure you provide.
