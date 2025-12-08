@@ -674,6 +674,11 @@
 									warnOnce("dupKeys", "[Moon] Duplicate keys detected among siblings; keys must be unique.");
 								}
 								if (valueOld === undefined) {
+									// Clear any existing DOM children (e.g. placeholders) before Moon takes over.
+									if (nodeOldElement.firstChild) {
+										nodeOldElement.textContent = "";
+									}
+									nodeOldElementMoonChildren.length = 0;
 									for (var _i2 = 0; _i2 < valueNewLength; _i2++) {
 										var childEl = viewCreate(valueNew[_i2]);
 										nodeOldElementMoonChildren.push(childEl);

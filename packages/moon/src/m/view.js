@@ -563,6 +563,12 @@ function viewPatch(nodeOld, nodeOldElement, nodeNew) {
 						}
 
 						if (valueOld === undefined) {
+							// Clear any existing DOM children (e.g. placeholders) before Moon takes over.
+							if (nodeOldElement.firstChild) {
+								nodeOldElement.textContent = "";
+							}
+							nodeOldElementMoonChildren.length = 0;
+
 							for (let i = 0; i < valueNewLength; i++) {
 								const childEl = viewCreate(valueNew[i]);
 								nodeOldElementMoonChildren.push(childEl);
